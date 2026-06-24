@@ -1,0 +1,27 @@
+# FastAPI
+fastapi
+uvicorn[standard]
+
+# Validation & Settings
+pydantic
+pydantic-settings
+
+# Gemini
+google-genai
+google-adk
+
+# Firebase / Firestore
+firebase-admin
+google-cloud-firestore
+
+# Environment Variables
+python-dotenv
+
+# HTTP Client
+httpx
+
+# File Uploads
+python-multipart
+
+# Optional
+google-auth
