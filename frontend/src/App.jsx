@@ -1,10 +1,16 @@
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Landing from '@/pages/Landing/Landing';
+
 function App() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100">
-      <h1 className="text-5xl font-bold text-blue-600">
-        Tailwind is Working
-      </h1>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        {/* Landing page - root route */}
+        <Route path="/" element={<Landing />} />
+
+        
+      </Routes>
+    </BrowserRouter>
   );
 }
 
