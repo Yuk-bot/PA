@@ -1,5 +1,6 @@
 # FastAPI
 fastapi
+fastapi-authlib
 uvicorn[standard]
 
 # Validation & Settings

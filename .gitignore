@@ -1,3 +1,7 @@
 venv/
 .env
 backend/firebase_key.json
+
+# Python
+__pycache__/
+*.py[cod]
