@@ -1,7 +1,7 @@
 from db import firebase
 
 from fastapi import FastAPI, Depends
-from api import auth, user_profile
+from api import auth, user_profile, tasks
 from middleware.auth import verify_token
 
 
@@ -27,9 +27,11 @@ async def get_profiile(user=Depends(verify_token)):
 async def root():
     return {"message": "PA's root docs"}
 
+
+
 app.include_router(user_profile.router, prefix="/api/users", tags=["Users"])
 
-
-#app.include_router(tasks.router, prefix="/api/tasks", tags=["Tasks"])
+#all task routes
+app.include_router(tasks.router, prefix="/api/tasks", tags=["Tasks"])
 
 #app.include_router(agents.router, prefix="/api/agents", tags=["Agents"])

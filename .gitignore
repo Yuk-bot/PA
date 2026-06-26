@@ -5,3 +5,62 @@ backend/firebase_key.json
 # Python
 __pycache__/
 *.py[cod]
+
+# Google Cloud credentials
+service-account.json
+serviceAccountKey.json
+*.pem
+
+# Local credentials
+credentials.json
+
+#frontend
+frontend/.gitignore
+node_modules/
+dist/
+dist-ssr/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+
+.firebase/
+firebase-debug.log
+
+.vscode/*
+!.vscode/extensions.json
+
+.idea/
+
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+coverage/
+.cache/

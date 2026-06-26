@@ -27,3 +27,43 @@ class UserResponse(BaseModel):
     profile: dict
     preferences: dict
     created_at: datetime
+
+
+from datetime import datetime
+from typing import Optional, List
+from pydantic import BaseModel
+
+#task schemas
+
+class TaskCreate(BaseModel):
+    """Create new task"""
+    title: str
+    description: Optional[str] = None
+    deadline: str  # "2024-12-31T18:00:00"
+    priority: str  # "high", "medium", "low"
+    estimated_hours: float
+    tags: Optional[List[str]] = []
+
+class TaskUpdate(BaseModel):
+    """Update task"""
+    title: Optional[str] = None
+    description: Optional[str] = None
+    deadline: Optional[str] = None
+    priority: Optional[str] = None
+    estimated_hours: Optional[float] = None
+    status: Optional[str] = None
+    tags: Optional[List[str]] = None
+
+class TaskResponse(BaseModel):
+    """Task response"""
+    id: str
+    uid: str
+    title: str
+    description: Optional[str]
+    deadline: str
+    priority: str
+    estimated_hours: float
+    status: str  # "todo", "in_progress", "completed"
+    tags: List[str]
+    created_at: datetime
+    updated_at: datetime
