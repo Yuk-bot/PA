@@ -54,7 +54,7 @@ async def create_user_in_firestore(uid: str, email: str): #create user if doesnt
 async def google_login(request: GoogleLoginRequest):
     try:
         decoded=firebase_auth.verify_id_token(request.id_token)
-        print(decoded)
+        
         uid=decoded['uid']
         email=decoded['email']
 
