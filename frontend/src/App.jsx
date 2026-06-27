@@ -9,6 +9,7 @@ import Calendar from '@/pages/Calender/Calender';
 import Settings from '@/pages/Settings/Settings';
 import Landing from '@/pages/Landing/Landing';
 import Signup from '@/pages/Signup/Signup';    
+import Profile from '@/pages/Profile/Profile';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 
 // Protected Route Wrapper
@@ -29,6 +30,7 @@ function App() {
         {/* Public Routes */}
         <Route path="/" element={<Landing />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/profile" element={<Profile />} />
 
         {/* Protected Dashboard Routes */}
         <Route

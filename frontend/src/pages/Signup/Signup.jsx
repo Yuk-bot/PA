@@ -3,7 +3,7 @@ import { auth } from "@/lib/firebase";
 
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -30,6 +30,13 @@ export default function Signup() {
     email: '',
     password: '',
     confirmPassword: '',
+    profession: '',           
+    timezone: '',             
+    workingHoursStart: '',    
+    workingHoursEnd: '',      
+    sessionDuration: '',
+    productiveHours: ["09:00-11:00"],
+    
   });
 
   // Error state
@@ -52,24 +59,40 @@ const handleGoogleSignup = async () => {
     //console.log("TOKEN LENGTH:", token.length);
 
     localStorage.setItem("token", token);
+    localStorage.setItem("userDisplayName", user.displayName);
 
     //console.log(localStorage.getItem("token"));
-
+    //console.log("Firebase user:", user);
+    //console.log("displayName:", user.displayName);
     
 
     // Create Firestore profile if first login
-    await fetch("http://localhost:8000/api/users/profile", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        fullName: user.displayName || formData.fullName,
-      }),
-    });
+    const response = await fetch("http://localhost:8000/api/users/profile", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    profile_data: {
+      name: user.displayName,
+      profession: formData.profession,
+      working_hours_start: formData.workingHoursStart,
+      working_hours_end: formData.workingHoursEnd,
+      productive_hours: ["09:00-11:00", "14:00-16:00"],
+      preferred_session_duration: formData.sessionDuration,
+      timezone: formData.timezone,
+      productive_hours: formData.productiveHours,
+    },
+    pref_data: {
+      email_reminders: true,
+      push_notifications: false,
+      daily_summary: true,
+    },
+  }),
+});
 
-    navigate("/dashboard");
+navigate("/profile");
   } catch (error) {
     console.error(error);
 
@@ -299,6 +322,89 @@ const isFormValid =
                 <p className="text-xs text-red-600 mt-1">{errors.email}</p>
               )}
             </div>
+
+            {/* Profession */}
+
+<div>
+  <Label htmlFor="profession">I am a</Label>
+  <Select value={formData.profession} onValueChange={(value) => setFormData(prev => ({ ...prev, profession: value }))}>
+    <SelectTrigger className="mt-1.5 h-10 border-slate-300">
+      <SelectValue />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="student">Student</SelectItem>
+      <SelectItem value="professional">Professional</SelectItem>
+    </SelectContent>
+  </Select>
+</div>
+
+{/* Timezone */}
+<div>
+  <Label htmlFor="timezone">Timezone</Label>
+  <Select value={formData.timezone} onValueChange={(value) => setFormData(prev => ({ ...prev, timezone: value }))}>
+    <SelectTrigger className="mt-1.5 h-10 border-slate-300">
+      <SelectValue />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="IST">IST (India)</SelectItem>
+      <SelectItem value="UTC">UTC</SelectItem>
+    </SelectContent>
+  </Select>
+</div>
+
+{/* Working Hours Start */}
+<div>
+  <Label htmlFor="workingHoursStart">Work Start Time</Label>
+  <Input
+    id="workingHoursStart"
+    name="workingHoursStart"
+    type="time"
+    value={formData.workingHoursStart}
+    onChange={handleInputChange}
+    className="mt-1.5 h-10 border-slate-300"
+  />
+</div>
+
+{/* Working Hours End */}
+<div>
+  <Label htmlFor="workingHoursEnd">Work End Time</Label>
+  <Input
+    id="workingHoursEnd"
+    name="workingHoursEnd"
+    type="time"
+    value={formData.workingHoursEnd}
+    onChange={handleInputChange}
+    className="mt-1.5 h-10 border-slate-300"
+  />
+</div>
+
+{/* Session Duration */}
+<div>
+  <Label htmlFor="sessionDuration">Session Duration (minutes)</Label>
+  <Input
+    id="sessionDuration"
+    name="sessionDuration"
+    type="number"
+    value={formData.sessionDuration}
+    onChange={handleInputChange}
+    className="mt-1.5 h-10 border-slate-300"
+  />
+</div>
+{/* Productive Hours */}
+<div>
+  <Label>Peak Productive Hours</Label>
+  <Input
+    name="productiveHours"
+    placeholder="e.g., 09:00-11:00, 14:00-16:00"
+    value={formData.productiveHours.join(', ')}
+    onChange={(e) => setFormData(prev => ({
+      ...prev,
+      productiveHours: e.target.value.split(',').map(h => h.trim())
+    }))}
+    className="mt-1.5 h-10 border-slate-300"
+  />
+  <p className="text-xs text-slate-500 mt-1">Comma-separated time ranges</p>
+</div>
 
             {/* Password */}
             <div className="space-y-2">

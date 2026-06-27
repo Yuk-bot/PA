@@ -41,10 +41,10 @@ async def verify_token(request: Request) -> dict:
 
 
         decoded = firebase_auth.verify_id_token(token)
-        print(f"✅ Token verified for: {decoded['uid']}")
+        #print(f"Token verified for: {decoded['uid']}")
         return decoded
     except Exception as e:
-        print(f"❌ Verification failed: {str(e)}")
+        #print(f"Verification failed: {str(e)}")
         raise HTTPException(status_code=401, detail=f"Verification failed: {str(e)}")
 
 

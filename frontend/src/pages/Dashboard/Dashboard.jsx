@@ -18,8 +18,7 @@ const backend_api='http://localhost:8000/api';
 export default function Dashboard() {
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
-  console.log('🔍 Token in storage:', token ? token.substring(0, 50) + '...' : 'NOT FOUND');
-  console.log('🔍 Token length:', token?.length);
+  
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
