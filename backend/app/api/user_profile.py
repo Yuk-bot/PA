@@ -3,7 +3,10 @@ from models.schemas import ProfileCreate, PreferencesCreate
 from services.user_service import create_user_profile, get_user_profile
 from middleware.auth import verify_token
 
+
 router = APIRouter()
+
+
 
 @router.post("/profile") #create/update user profile after signup
 async def create_profile(

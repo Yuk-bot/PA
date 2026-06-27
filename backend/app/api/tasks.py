@@ -34,6 +34,7 @@ async def get_tasks(user=Depends(verify_token)): #get all tasks from current use
 @router.get("/{task_id}")
 async def get_task(task_id: str, user=Depends(verify_token)):
 #get a single task from the user
+    print(f"✅ User authenticated: {user['uid']}")
     try:
         uid = user['uid']
         task = await get_task_by_id(uid, task_id)

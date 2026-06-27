@@ -25,7 +25,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
+"""
 #auth routes
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 @app.get("/api/profile")
@@ -34,7 +34,7 @@ async def get_profiile(user=Depends(verify_token)):
         "uid": user['uid'],
         "email": user['email']
     } 
-
+"""
 @app.get("/"
          )
 async def root():

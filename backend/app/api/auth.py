@@ -54,9 +54,9 @@ async def create_user_in_firestore(uid: str, email: str): #create user if doesnt
         return False
  
 
-@router.post("/login/google", summary="google signin",
-             description=""" Body: { "id_token": "..." }
-    Returns: { "uid": "...", "email": "..." }""")
+"""@router.post("/login/google", summary="google signin",
+             description= Body: { "id_token": "..." }
+    Returns: { "uid": "...", "email": "..." })
 async def google_login(request: GoogleLoginRequest):
     try:
         access_token = request.id_token
@@ -157,8 +157,8 @@ async def email_signup(request: EmailSignupRequest):
 
 
 @router.post("/login/email", summary="emailsignin",
-             description=""" Body: { "email": "...", "password": "..." }
-    Returns: { "uid": "...", "email": "..." }""")
+             description= Body: { "email": "...", "password": "..." }
+    Returns: { "uid": "...", "email": "..." })
 async def email_signin(request: EmailLoginRequest):
     try:
         user = firebase_auth.get_user_by_email(request.email)
@@ -176,7 +176,7 @@ async def email_signin(request: EmailLoginRequest):
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Login failed: {str(e)}")
     
-
+"""
 @router.post("/logout",
              description="""
     POST /api/auth/logout
