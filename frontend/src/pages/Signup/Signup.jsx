@@ -1,14 +1,22 @@
-// src/pages/Signup/Signup.jsx
+
+import { auth } from "@/lib/firebase";
 
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useGoogleLogin } from '@react-oauth/google';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Mail, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+
+
+import {
+  createUserWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
+} from "firebase/auth";
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -27,158 +35,163 @@ export default function Signup() {
   // Error state
   const [errors, setErrors] = useState({})
 
-//googleoauth
-  const googleLogin = useGoogleLogin({
-    onSuccess: async (codeResponse) => {
-      setIsLoading(true);
-      try {
-        // Send the access token to your backend
-        const response = await fetch('http://localhost:8000/api/auth/login/google', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            id_token: codeResponse.access_token,
-          }),
-        });
+//google signup
 
-        const data = await response.json();
+const handleGoogleSignup = async () => {
+  setIsLoading(true);
 
-        if (!response.ok) {
-          setErrors({
-            email: data.detail || 'Google signup failed. Please try again.',
-          });
-          return;
-        }
+  try {
+    const provider = new GoogleAuthProvider();
 
-        // Success - store token and redirect
-        localStorage.setItem('token', data.uid);
-        navigate('/dashboard');
-      } catch (error) {
-        setErrors({
-          email: 'Network error. Please try again.',
-        });
-        console.error('Google signup error:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    onError: () => {
-      setErrors({
-        email: 'Google signup failed. Please try again.',
-      });
-    },
-    flow: 'implicit', // Use implicit flow for web
-  });
+    const result = await signInWithPopup(auth, provider);
+
+    const user = result.user;
+    const token = await user.getIdToken();
+    //console.log("UID:", user.uid);
+    //console.log("TOKEN:", token);
+    //console.log("TOKEN LENGTH:", token.length);
+
+    localStorage.setItem("token", token);
+
+    //console.log(localStorage.getItem("token"));
+
+    
+
+    // Create Firestore profile if first login
+    await fetch("http://localhost:8000/api/users/profile", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        fullName: user.displayName || formData.fullName,
+      }),
+    });
+
+    navigate("/dashboard");
+  } catch (error) {
+    console.error(error);
+
+    setErrors({
+      email: error.message || "Google signup failed.",
+    });
+  } finally {
+    setIsLoading(false);
+  }
 
   
+};
 
-  const validateForm = () => {
-    const newErrors = {};
 
-    // Full Name validation
-    if (!formData.fullName.trim()) {
-      newErrors.fullName = 'Full name is required';
-    }
 
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!emailRegex.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email';
-    }
+const validateForm = () => {
+  const newErrors = {};
 
-    // Password validation
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters';
-    }
+  if (!formData.fullName.trim()) {
+    newErrors.fullName = "Full name is required";
+  }
 
-    // Confirm password validation
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password';
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  if (!formData.email.trim()) {
+    newErrors.email = "Email is required";
+  } else if (!emailRegex.test(formData.email)) {
+    newErrors.email = "Please enter a valid email";
+  }
 
-  // ============ FORM HANDLERS ============
+  if (!formData.password) {
+    newErrors.password = "Password is required";
+  } else if (formData.password.length < 8) {
+    newErrors.password = "Password must be at least 8 characters";
+  }
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
+  if (!formData.confirmPassword) {
+    newErrors.confirmPassword = "Please confirm your password";
+  } else if (formData.password !== formData.confirmPassword) {
+    newErrors.confirmPassword = "Passwords do not match";
+  }
+
+  setErrors(newErrors);
+
+  return Object.keys(newErrors).length === 0;
+};
+
+
+
+const handleInputChange = (e) => {
+  const { name, value } = e.target;
+
+  setFormData((prev) => ({
+    ...prev,
+    [name]: value,
+  }));
+
+  if (errors[name]) {
+    setErrors((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: "",
     }));
-    // Clear error for this field when user starts typing
-    if (errors[name]) {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: '',
-      }));
-    }
-  };
+  }
+};
 
-  const handleEmailSignup = async (e) => {
-    e.preventDefault();
 
-    if (!validateForm()) {
-      return;
-    }
 
-    setIsLoading(true);
+const handleEmailSignup = async (e) => {
+  e.preventDefault();
 
-    try {
-      // Call backend endpoint
-      const response = await fetch('http://localhost:8000/api/auth/signup/email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-        }),
-      });
+  if (!validateForm()) return;
 
-      const data = await response.json();
+  setIsLoading(true);
 
-      if (!response.ok) {
-        setErrors({
-          email: data.detail || 'Signup failed. Please try again.',
-        });
-        return;
-      }
+  try {
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      formData.email,
+      formData.password
+    );
 
-      // Success - redirect to login or dashboard
-      navigate('/login', {
-        state: { message: 'Account created! Please log in.' },
-      });
-    } catch (error) {
-      setErrors({
-        email: 'Network error. Please try again.',
-      });
-      console.error('Signup error:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    const user = userCredential.user;
 
-  const isFormValid =
-    formData.fullName.trim() &&
-    formData.email &&
-    formData.password &&
-    formData.password === formData.confirmPassword &&
-    formData.password.length >= 8 &&
-    !errors.email &&
-    !errors.password &&
-    !errors.confirmPassword;
+    const token = await user.getIdToken();
+
+    localStorage.setItem("token", token);
+
+    // Create Firestore profile
+    await fetch("http://localhost:8000/api/users/profile", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        fullName: formData.fullName,
+      }),
+    });
+
+    navigate("/dashboard");
+  } catch (error) {
+    console.error(error);
+
+    setErrors({
+      email: error.message,
+    });
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+
+
+const isFormValid =
+  formData.fullName.trim() &&
+  formData.email &&
+  formData.password &&
+  formData.password === formData.confirmPassword &&
+  formData.password.length >= 8 &&
+  !errors.email &&
+  !errors.password &&
+  !errors.confirmPassword;
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12 bg-[#FAFAF8]">
@@ -228,7 +241,7 @@ export default function Signup() {
 
           {/* Google Sign Up Button */}
           <Button
-            onClick={() => googleLogin()}
+            onClick={handleGoogleSignup}
             disabled={isLoading}
             variant="outline"
             size="lg"

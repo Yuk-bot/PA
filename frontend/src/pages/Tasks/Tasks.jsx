@@ -1,6 +1,6 @@
-// src/pages/Tasks.jsx
 
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -18,52 +18,133 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { CheckSquare2, Plus, Filter, Trash2 } from 'lucide-react';
+import { CheckSquare2, Plus, Filter, Trash2, Loader } from 'lucide-react';
 
-const SAMPLE_TASKS = [
-  { id: 1, title: 'Complete project report', priority: 'high', completed: false, dueDate: 'Today' },
-  { id: 2, title: 'Review pull requests', priority: 'medium', completed: false, dueDate: 'Today' },
-  { id: 3, title: 'Update documentation', priority: 'low', completed: true, dueDate: 'Yesterday' },
-  { id: 4, title: 'Team meeting prep', priority: 'high', completed: false, dueDate: 'Tomorrow' },
-  { id: 5, title: 'Email client feedback', priority: 'medium', completed: false, dueDate: 'Tomorrow' },
-];
+const API_BASE = 'http://localhost:8000/api';
 
 export default function Tasks() {
-  const [tasks, setTasks] = useState(SAMPLE_TASKS);
+  const [tasks, setTasks] = useState([]);
   const [filter, setFilter] = useState('all');
   const [newTask, setNewTask] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
-  const filteredTasks = tasks.filter((task) => {
-    if (filter === 'completed') return task.completed;
-    if (filter === 'pending') return !task.completed;
-    return true;
-  });
+  // Get token from localStorage
+  const token = localStorage.getItem('token');
 
-  const handleToggleTask = (id) => {
-    setTasks(tasks.map((task) =>
-      task.id === id ? { ...task, completed: !task.completed } : task
-    ));
-  };
-
-  const handleDeleteTask = (id) => {
-    setTasks(tasks.filter((task) => task.id !== id));
-  };
-
-  const handleAddTask = () => {
-    if (newTask.trim()) {
-      setTasks([
-        ...tasks,
-        {
-          id: Math.max(...tasks.map((t) => t.id), 0) + 1,
-          title: newTask,
-          priority: 'medium',
-          completed: false,
-          dueDate: 'Today',
+//fetching from backend
+  const fetchTasks = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE}/tasks`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
         },
-      ]);
-      setNewTask('');
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch tasks');
+      }
+
+      const data = await response.json();
+      setTasks(data.tasks || []);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+      console.error('Error fetching tasks:', err);
+    } finally {
+      setLoading(false);
     }
   };
+
+
+  useEffect(() => {
+    fetchTasks();
+  }, []);
+
+
+
+  const handleToggleTask = async (id) => {
+    const task = tasks.find((t) => t.id === id);
+    const newStatus = task.status === 'completed' ? 'todo' : 'completed';
+
+    try {
+      const response = await fetch(`${API_BASE}/tasks/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (response.ok) {
+        setTasks(
+          tasks.map((t) =>
+            t.id === id ? { ...t, status: newStatus } : t
+          )
+        );
+      }
+    } catch (err) {
+      console.error('Error updating task:', err);
+    }
+  };
+
+  const handleDeleteTask = async (id) => {
+    try {
+      const response = await fetch(`${API_BASE}/tasks/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        setTasks(tasks.filter((t) => t.id !== id));
+      }
+    } catch (err) {
+      console.error('Error deleting task:', err);
+    }
+  };
+
+  const handleAddTask = async () => {
+    if (!newTask.trim()) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/tasks`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: newTask,
+          description: '',
+          deadline: new Date().toISOString(),
+          priority: 'medium',
+          estimated_hours: 1,
+          tags: [],
+        }),
+      });
+
+      if (response.ok) {
+        setNewTask('');
+        setDialogOpen(false);
+        fetchTasks(); // Refresh list
+      }
+    } catch (err) {
+      console.error('Error adding task:', err);
+    }
+  };
+
+ //filter and display
+
+  const filteredTasks = tasks.filter((task) => {
+    if (filter === 'completed') return task.status === 'completed';
+    if (filter === 'pending') return task.status !== 'completed';
+    return true;
+  });
 
   const getPriorityColor = (priority) => {
     switch (priority) {
@@ -78,6 +159,8 @@ export default function Tasks() {
     }
   };
 
+
+
   return (
     <main className="flex-1 overflow-y-auto">
       <div className="p-6 md:p-8 space-y-6">
@@ -86,12 +169,12 @@ export default function Tasks() {
           <div>
             <h2 className="text-3xl font-bold text-slate-900">My Tasks</h2>
             <p className="text-sm text-slate-600 mt-1">
-              {tasks.length} total • {tasks.filter((t) => !t.completed).length} pending
+              {tasks.length} total • {tasks.filter((t) => t.status !== 'completed').length} pending
             </p>
           </div>
 
           {/* Add Task Dialog */}
-          <Dialog>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button className="gap-2 bg-slate-900 text-white hover:bg-slate-800">
                 <Plus className="w-4 h-4" />
@@ -148,9 +231,20 @@ export default function Tasks() {
           </DropdownMenu>
         </div>
 
+        {/* Error Message */}
+        {error && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
+        )}
+
         {/* Task List */}
         <Card className="border-slate-200/50 bg-white/70 backdrop-blur-sm overflow-hidden">
-          {filteredTasks.length === 0 ? (
+          {loading ? (
+            <div className="p-12 flex items-center justify-center">
+              <Loader className="w-6 h-6 text-slate-400 animate-spin" />
+            </div>
+          ) : filteredTasks.length === 0 ? (
             <div className="p-12 text-center">
               <CheckSquare2 className="w-12 h-12 text-slate-300 mx-auto mb-4" />
               <p className="text-slate-600">
@@ -168,29 +262,28 @@ export default function Tasks() {
                   key={task.id}
                   className="p-4 hover:bg-slate-50/50 transition-colors flex items-center gap-4 group"
                 >
-                  {/* Checkbox */}
                   <input
                     type="checkbox"
-                    checked={task.completed}
+                    checked={task.status === 'completed'}
                     onChange={() => handleToggleTask(task.id)}
                     className="w-5 h-5 rounded border-slate-300 cursor-pointer"
                   />
 
-                  {/* Task Content */}
                   <div className="flex-1 min-w-0">
                     <p
                       className={`font-medium ${
-                        task.completed
+                        task.status === 'completed'
                           ? 'text-slate-400 line-through'
                           : 'text-slate-900'
                       }`}
                     >
                       {task.title}
                     </p>
-                    <p className="text-xs text-slate-500 mt-1">{task.dueDate}</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {task.deadline ? new Date(task.deadline).toLocaleDateString() : 'No date'}
+                    </p>
                   </div>
 
-                  {/* Priority Badge */}
                   <span
                     className={`text-xs font-medium px-2.5 py-1 rounded whitespace-nowrap ${getPriorityColor(
                       task.priority
@@ -199,7 +292,6 @@ export default function Tasks() {
                     {task.priority}
                   </span>
 
-                  {/* Delete Button */}
                   <Button
                     variant="ghost"
                     size="sm"

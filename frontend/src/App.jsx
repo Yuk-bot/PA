@@ -1,12 +1,14 @@
 // src/App.jsx
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+// src/App.jsx
+
+import Dashboard from '@/pages/Dashboard/Dashboard';
+import Tasks from '@/pages/Tasks/Tasks';
+import Calendar from '@/pages/Calender/Calender';
+import Settings from '@/pages/Settings/Settings';
 import Landing from '@/pages/Landing/Landing';
-import Signup from '@/pages/Signup/Signup';
-import Dashboard from '@/pages/Dashboard';
-import Tasks from '@/pages/Tasks';
-import Calendar from '@/pages/Calendar';
-import Settings from '@/pages/Settings';
+import Signup from '@/pages/Signup/Signup';    
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 
 // Protected Route Wrapper
