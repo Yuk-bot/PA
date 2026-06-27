@@ -3,6 +3,12 @@ from pydantic import BaseModel
 from db.firebase import firebase_auth, firebase_db
 import re
 from firebase_admin import firestore
+import os
+import requests
+from google.auth.transport import requests as google_requests
+
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 
 router=APIRouter()
 
@@ -53,56 +59,100 @@ async def create_user_in_firestore(uid: str, email: str): #create user if doesnt
     Returns: { "uid": "...", "email": "..." }""")
 async def google_login(request: GoogleLoginRequest):
     try:
-        decoded=firebase_auth.verify_id_token(request.id_token)
+        access_token = request.id_token
         
-        uid=decoded['uid']
-        email=decoded['email']
-
-        await create_user_in_firestore(uid, email) #if first login
-    
-        return AuthResponse(
-            uid=uid,
-            email=email,
-            message="Logged in by Google"
+        # Exchange access token for user info
+        userinfo_endpoint = "https://www.googleapis.com/oauth2/v2/userinfo"
+        response = requests.get(
+            userinfo_endpoint,
+            headers={"Authorization": f"Bearer {access_token}"}
         )
-
-    except firebase_auth.InvalidIdTokenError:
-        raise HTTPException(status_code=401, detail="Invalid ID token")
-    except firebase_auth.ExpiredIdTokenError:
-        raise HTTPException(status_code=401, detail="ID token expired")
+        
+        if response.status_code != 200:
+            raise HTTPException(status_code=401, detail="Invalid Google token")
+        
+        userinfo = response.json()
+        email = userinfo.get('email')
+        name = userinfo.get('name', '')
+        
+        if not email:
+            raise HTTPException(status_code=401, detail="Could not retrieve email from Google")
+        
+        #create user in firebase only if he doesnt exist check first otherwise errors
+        try:
+            user = firebase_auth.get_user_by_email(email)
+            uid = user.uid
+        except firebase_auth.UserNotFoundError:
+            #user not found so create
+            user = firebase_auth.create_user(email=email, display_name=name)
+            uid = user.uid
+        
+        #same user creation and chencking logic
+        user_ref = firebase_db.collection("users").document(uid)
+        if not user_ref.get().exists:
+            user_ref.set({
+                "email": email,
+                "profile": {
+                    "name": name,
+                    "interests": [],
+                    "timezone": "UTC"
+                },
+                "preferences": {
+                    "notifications_enabled": True
+                },
+                "created_at": firestore.SERVER_TIMESTAMP
+            })
+        
+        #for frontend
+        custom_token = firebase_auth.create_custom_token(uid)
+        
+        return {
+            "uid": uid,
+            "email": email,
+            "message": "Google login successful",
+            "token": custom_token.decode()
+        }
+    
+    except requests.exceptions.RequestException:
+        raise HTTPException(status_code=401, detail="Failed to verify Google token")
     except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Google login failed: {str(e)}")
     
 
-
-@router.post("/signup/email", summary="email signup",
-             description=""" Body: { "email": "...", "password": "..." }
-    Returns: { "uid": "...", "email": "..." }""")
+@router.post("/signup/email")
 async def email_signup(request: EmailSignupRequest):
     try:
-        if len(request.password)<6:
-            raise HTTPException(status_code=400, detail="Password must be at least 6 character")
-                                
+        # create firebase user
         user = firebase_auth.create_user(
             email=request.email,
             password=request.password
         )
 
-        uid=user.uid
-        await create_user_in_firestore(uid, request.email)
-        
-        return AuthResponse(
-            uid=uid,
-            email=request.email,
-            message="Signup successful. Please login."
-        )
-    
-    except firebase_auth.EmailAlreadyExistsError:
-        raise HTTPException(status_code=400, detail="Email arleady registered")
-    
-    except Exception as e:
-        raise HTTPException(status_code=400, detail="Signup failed due to: Password criteria not fullfiled(capital letter+special character equired), or {str(e)}")
+        uid = user.uid
 
+        # create firestore profile
+        user_ref = firebase_db.collection("users").document(uid)
+        if not user_ref.get().exists:
+            user_ref.set({
+                "email": request.email,
+                "profile": {
+                    "interests": [],
+                    "timezone": "UTC"
+                },
+                "preferences": {
+                    "notifications_enabled": True
+                },
+                "created_at": firestore.SERVER_TIMESTAMP
+            })
+
+        return {
+            "uid": uid,
+            "email": request.email,
+            "message": "Signup successful"
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
     
 
 

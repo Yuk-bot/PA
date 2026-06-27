@@ -1,4 +1,5 @@
 from db import firebase
+from fastapi.middleware import cors
 
 from fastapi import FastAPI, Depends
 from api import auth, user_profile, tasks
@@ -11,6 +12,18 @@ app=FastAPI(
     summary="will add summary"
 )
 
+#cors
+app.add_middleware(
+    cors.CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",  #frontend 
+        "http://localhost:3000",   #alternative ports
+        "http://localhost:8080",  
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 #auth routes
