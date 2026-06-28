@@ -8,7 +8,8 @@ import Tasks from '@/pages/Tasks/Tasks';
 import Calendar from '@/pages/Calender/Calender';
 import Settings from '@/pages/Settings/Settings';
 import Landing from '@/pages/Landing/Landing';
-import Signup from '@/pages/Signup/Signup';    
+import Signup from '@/pages/Signup/Signup';   
+import Login from '@/pages/Login/Login';
 import Profile from '@/pages/Profile/Profile';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 
@@ -31,6 +32,7 @@ function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/login" element={<Login />} />
 
         {/* Protected Dashboard Routes */}
         <Route
