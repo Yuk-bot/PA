@@ -122,7 +122,7 @@ def get_stored_credentials(uid: str) -> GoogleCalendarCredentials | None:
     
         data["access_token"] = decrypt_token(data["access_token"])
         data["refresh_token"] = decrypt_token(data["refresh_token"])
-        ip
+        
         return GoogleCalendarCredentials(**data)
     
     except Exception as e:
