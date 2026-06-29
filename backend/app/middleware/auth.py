@@ -12,7 +12,7 @@ async def verify_token(request: Request) -> dict:
     
     
     auth_header = request.headers.get("Authorization")#authorisatioh header- a header in the content returned from requests
-    print(f"🔍 Auth header received: {auth_header[:50] if auth_header else 'NONE'}")
+    #print(f"Auth header received: {auth_header[:50] if auth_header else 'NONE'}")
     if not auth_header:
         print("No auth header")
         raise HTTPException(
