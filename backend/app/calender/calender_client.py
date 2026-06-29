@@ -1,11 +1,12 @@
-from datetime import datetime, timedelta
-from typing import List, Optional
+from datetime import datetime, timedelta, timezone
+from typing import List
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from models.schemas import CalendarEvent, GoogleCalendarCredentials
 from calender.utils import encrypt_token, decrypt_token
 from firebase_admin import firestore
+import os
 
 db = firestore.client()
 
@@ -20,15 +21,16 @@ class GoogleCalendarClient:
         self.service = self._create_service()
     
     def _create_service(self):  #_- the strating/leading underscore- for private method functions- use inside the class
-        """Create authenticated Google Calendar service"""
+  
         # Build Credentials object from stored data
         creds = Credentials(
             token=self.credentials_obj.access_token,
             refresh_token=self.credentials_obj.refresh_token,
             token_uri="https://oauth2.googleapis.com/token",
-            client_id="", #not for already authed requests
-            client_secret="",
+            client_id=os.getenv("OAUTH_CLIENT_ID"),
+            client_secret=os.getenv("CLIENT_SECRET"),
             scopes=["https://www.googleapis.com/auth/calendar.readonly"],
+            expiry=datetime.fromtimestamp(self.credentials_obj.expires_at, tz=timezone.utc),
         )
         
 

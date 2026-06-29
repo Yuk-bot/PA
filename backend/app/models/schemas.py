@@ -29,9 +29,7 @@ class UserResponse(BaseModel):
     created_at: datetime
 
 
-from datetime import datetime
-from typing import Optional, List
-from pydantic import BaseModel
+
 
 #task schemas
 
@@ -68,10 +66,7 @@ class TaskResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    from datetime import datetime
-from typing import List, Optional
-from pydantic import BaseModel
-
+ 
 # ============ CALENDAR OAUTH ============
 
 class GoogleCalendarCredentials(BaseModel):

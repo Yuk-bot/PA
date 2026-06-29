@@ -2,7 +2,7 @@ import os
 from cryptography.fernet import Fernet
 
 
-ENCRYPTION_KEY = os.getenv("CALENDAR_ENCRYPTION_KEY").encode()
+ENCRYPTION_KEY = os.getenv("CALENDER_ENCRYPTION").encode()
 cipher = Fernet(ENCRYPTION_KEY)
 
 

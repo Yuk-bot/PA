@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import RedirectResponse
 from datetime import datetime, timedelta
-from middleware import verify_token
+from middleware.auth import verify_token
 from models.schemas import(
     CalendarConnectResponse,
-    CalendarCallbackResponse,
     CalendarDisconnectResponse,
     CalendarEventsResponse,
     CalendarTodayResponse,
@@ -34,34 +34,32 @@ async def connect_calendar(user=Depends(verify_token)):
         raise HTTPException(status_code=500, detail=f"Failed to generate auth URL: {str(e)}")
 
 
-@router.get("/callback", response_model=CalendarCallbackResponse)
-async def calendar_callback(code: str, state: str = Query(None), user=Depends(verify_token)):
-    """
-    Step 2: Handle OAuth callback from Google.
-    Google redirects here after user grants permission.
-    Exchanges auth code for tokens and stores them.
-    """
+@router.get("/callback")
+async def calendar_callback(code: str = Query(None), state: str = Query(None)):
+    # OAuth callback — Google redirects here with code & state (uid).
+    # No Firebase auth header is present; we identify the user via the state param.
     try:
-        uid = user["uid"]
-        
         if not code:
-            raise HTTPException(status_code=400, detail="Missing authorization code")
-        
-        # Exchange code for tokens and store in Firestore
+            return RedirectResponse(url="http://localhost:5173/calendar?error=missing_code")
+
+        if not state:
+            return RedirectResponse(url="http://localhost:5173/calendar?error=missing_state")
+
+        uid=state
+
         credentials = handle_oauth_callback(uid, code)
-        
-        return CalendarCallbackResponse(
-            message="Calendar connected successfully",
-            google_email=credentials.google_account_email,
+
+        return RedirectResponse(
+            url=f"http://localhost:5173/calendar?calendar_connected=true&email={credentials.google_account_email}"
         )
-    
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to connect calendar: {str(e)}")
+        return RedirectResponse(url=f"http://localhost:5173/calendar?error={str(e)}")
 
 
 @router.get("/events", response_model=CalendarEventsResponse)#get upcoming calendar events.
 async def get_events(
-    #max_results: Max events to return (default: 10) ,days_ahead: How many days into future (default: 30)
+    #max_results: Max events to return (default: 10), days_ahead: How many days into future (default: 30)
     max_results: int = Query(10, ge=1, le=100),
     days_ahead: int = Query(30, ge=1, le=365),
     user=Depends(verify_token),
@@ -154,15 +152,17 @@ async def get_free_slots(user=Depends(verify_token)):
 
 @router.post("/disconnect", response_model=CalendarDisconnectResponse)
 async def disconnect_calendar_access(user=Depends(verify_token)):
-   
+
     try:
         uid = user["uid"]
-        
+
         if disconnect_calendar(uid):
             return CalendarDisconnectResponse(message="Calendar disconnected successfully")
         else:
             raise HTTPException(status_code=500, detail="Failed to disconnect calendar")
-    
+
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Disconnect failed: {str(e)}")
 
@@ -171,22 +171,21 @@ async def disconnect_calendar_access(user=Depends(verify_token)):
 def _calculate_free_slots(events, working_hours_start: str, working_hours_end: str) -> list[FreeSlot]:
     
     
-    from app.models.schemas import FreeSlot
+    
     
     try:
         start_hour, start_min = map(int, working_hours_start.split(":"))
         end_hour, end_min = map(int, working_hours_end.split(":"))
     except:
-        # Default to 9-18 if parsing fails
+     
         start_hour, start_min = 9, 0
         end_hour, end_min = 18, 0
     
-    # Create working hours boundaries for today
     today = datetime.now().date()
     work_start = datetime.combine(today, datetime.min.time()).replace(hour=start_hour, minute=start_min)
     work_end = datetime.combine(today, datetime.min.time()).replace(hour=end_hour, minute=end_min)
     
-    # Sort events by start time
+   
     sorted_events = sorted(events, key=lambda e: e.start)
     
     free_slots = []
@@ -213,7 +212,6 @@ def _calculate_free_slots(events, working_hours_start: str, working_hours_end: s
                         )
                     )
         
-        # Move current time to end of this event
         current_time = max(current_time, event.end)
     
     # Add remaining time until work_end

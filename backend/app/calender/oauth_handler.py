@@ -10,8 +10,8 @@ from models.schemas import GoogleCalendarCredentials
 from calender.utils import encrypt_token, decrypt_token
 
 
-CLIENT_ID = os.getenv("GOOGLE_CALENDAR_CLIENT_ID")
-CLIENT_SECRET = os.getenv("GOOGLE_CALENDAR_CLIENT_SECRET")
+CLIENT_ID = os.getenv("OAUTH_CLIENT_ID")
+CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 REDIRECT_URI = os.getenv("GOOGLE_CALENDAR_REDIRECT_URI")
 
 
@@ -26,7 +26,7 @@ def get_authorization_url(uid: str) -> str:
     """
     flow = Flow.from_client_config(
         {
-            "installed": {
+            "web": {
                 "client_id": CLIENT_ID,
                 "client_secret": CLIENT_SECRET,
                 "auth_uri": "https://accounts.google.com/o/oauth2/auth",
@@ -42,6 +42,7 @@ def get_authorization_url(uid: str) -> str:
     auth_url, state = flow.authorization_url(
         access_type="offline", #get refresh token
         prompt="consent", #force consent screen for gcalander every time
+        state=uid,
     )
     
 
@@ -56,7 +57,7 @@ def handle_oauth_callback(uid: str, auth_code: str) -> GoogleCalendarCredentials
 
     flow = Flow.from_client_config(
         {
-            "installed": {
+            "web": {
                 "client_id": CLIENT_ID,
                 "client_secret": CLIENT_SECRET,
                 "auth_uri": "https://accounts.google.com/o/oauth2/auth",
@@ -73,11 +74,15 @@ def handle_oauth_callback(uid: str, auth_code: str) -> GoogleCalendarCredentials
     credentials = flow.credentials
     
     
-    google_email = credentials.token_info.get("email", "unknown@gmail.com")
+    import requests as http_requests
+    resp = http_requests.get(
+        "https://www.googleapis.com/oauth2/v3/userinfo",
+        headers={"Authorization": f"Bearer {credentials.token}"},
+    )
+    google_email = resp.json().get("email", "")
     
   
-    expires_at = int((datetime.now() + timedelta(seconds=credentials.expiry.timestamp() if credentials.expiry else 3600)).timestamp())
-    
+    expires_at = int(credentials.expiry.timestamp()) if credentials.expiry else int((datetime.now() + timedelta(hours=1)).timestamp())
   
     creds_to_store = GoogleCalendarCredentials(
         google_account_email=google_email,
@@ -117,7 +122,7 @@ def get_stored_credentials(uid: str) -> GoogleCalendarCredentials | None:
     
         data["access_token"] = decrypt_token(data["access_token"])
         data["refresh_token"] = decrypt_token(data["refresh_token"])
-        
+        ip
         return GoogleCalendarCredentials(**data)
     
     except Exception as e:
