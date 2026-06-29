@@ -30,7 +30,7 @@ class GoogleCalendarClient:
             client_id=os.getenv("OAUTH_CLIENT_ID"),
             client_secret=os.getenv("CLIENT_SECRET"),
             scopes=["https://www.googleapis.com/auth/calendar.readonly"],
-            expiry=datetime.fromtimestamp(self.credentials_obj.expires_at, tz=timezone.utc),
+            expiry=datetime.fromtimestamp(self.credentials_obj.expires_at, tz=timezone.utc).replace(tzinfo=None),
         )
         
 
@@ -123,6 +123,9 @@ class GoogleCalendarClient:
                    
                     start = datetime.fromisoformat(start_data["dateTime"].replace("Z", "+00:00"))
                     end = datetime.fromisoformat(end_data["dateTime"].replace("Z", "+00:00"))
+                    
+                    start = start.astimezone().replace(tzinfo=None) #convert to local time
+                    end = end.astimezone().replace(tzinfo=None)
 
                 attendees = [att.get("email", "") for att in event.get("attendees", [])]
                 

@@ -28,9 +28,12 @@ async def connect_calendar(user=Depends(verify_token)):
   #oauth clander link geenral user clicks and permits connection
     try:
         uid = user["uid"]
+        
         auth_url = get_authorization_url(uid)
+        
         return CalendarConnectResponse(authorization_url=auth_url)
     except Exception as e:
+        
         raise HTTPException(status_code=500, detail=f"Failed to generate auth URL: {str(e)}")
 
 
@@ -39,21 +42,25 @@ async def calendar_callback(code: str = Query(None), state: str = Query(None)):
     # OAuth callback — Google redirects here with code & state (uid).
     # No Firebase auth header is present; we identify the user via the state param.
     try:
+        
         if not code:
+            
             return RedirectResponse(url="http://localhost:5173/calendar?error=missing_code")
 
         if not state:
+            
             return RedirectResponse(url="http://localhost:5173/calendar?error=missing_state")
 
         uid=state
 
         credentials = handle_oauth_callback(uid, code)
-
+        
         return RedirectResponse(
             url=f"http://localhost:5173/calendar?calendar_connected=true&email={credentials.google_account_email}"
         )
 
     except Exception as e:
+        
         return RedirectResponse(url=f"http://localhost:5173/calendar?error={str(e)}")
 
 
@@ -68,18 +75,23 @@ async def get_events(
     try:
         uid = user["uid"]
        
+       
         creds = get_stored_credentials(uid)
         if not creds or not creds.connected:
+            
             raise HTTPException(status_code=404, detail="Calendar not connected")
        
+        
         client = GoogleCalendarClient(creds, uid)
         events = client.get_events(max_results=max_results, days_ahead=days_ahead)
+        
         
         return CalendarEventsResponse(events=events, count=len(events))
     
     except HTTPException:
         raise
     except Exception as e:
+        
         raise HTTPException(status_code=500, detail=f"Failed to fetch events: {str(e)}")
 
 
@@ -88,19 +100,24 @@ async def get_today_events(user=Depends(verify_token)):
 
     try:
         uid = user["uid"]
+        print(f"=== ROUTER DEBUG: /today request for UID: {uid} ===")
    
         creds = get_stored_credentials(uid)
         if not creds or not creds.connected:
+            
             raise HTTPException(status_code=404, detail="Calendar not connected")
       
+        
         client = GoogleCalendarClient(creds, uid)
         events = client.get_today_events()
+        
         
         return CalendarTodayResponse(events=events, count=len(events))
     
     except HTTPException:
         raise
     except Exception as e:
+        
         raise HTTPException(status_code=500, detail=f"Failed to fetch today's events: {str(e)}")
 
 
