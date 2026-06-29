@@ -37,9 +37,9 @@ class TaskCreate(BaseModel):
     """Create new task"""
     title: str
     description: Optional[str] = None
-    deadline: str 
-    priority: str  
-    estimated_hours: float
+    deadline: Optional[str] = None
+    priority: str = "medium"
+    estimated_hours: Optional[float] = 1.0
     tags: Optional[List[str]] = []
 
 class TaskUpdate(BaseModel):

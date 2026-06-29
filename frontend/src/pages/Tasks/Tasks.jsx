@@ -26,6 +26,8 @@ export default function Tasks() {
   const [tasks, setTasks] = useState([]);
   const [filter, setFilter] = useState('all');
   const [newTask, setNewTask] = useState('');
+  const [newDeadline, setNewDeadline] = useState('');
+  const [newPriority, setNewPriority] = useState('medium');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -112,26 +114,37 @@ export default function Tasks() {
     if (!newTask.trim()) return;
 
     try {
+      const body = {
+        title: newTask.trim(),
+        description: '',
+        priority: newPriority,
+        estimated_hours: 1,
+        tags: [],
+      };
+
+      // Only include deadline if the user set one
+      if (newDeadline) {
+        body.deadline = new Date(newDeadline).toISOString();
+      }
+
       const response = await fetch(`${API_BASE}/tasks`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          title: newTask,
-          description: '',
-          deadline: new Date().toISOString(),
-          priority: 'medium',
-          estimated_hours: 1,
-          tags: [],
-        }),
+        body: JSON.stringify(body),
       });
 
       if (response.ok) {
         setNewTask('');
+        setNewDeadline('');
+        setNewPriority('medium');
         setDialogOpen(false);
         fetchTasks(); // Refresh list
+      } else {
+        const err = await response.json().catch(() => ({}));
+        console.error('Add task failed:', err);
       }
     } catch (err) {
       console.error('Error adding task:', err);
@@ -186,16 +199,61 @@ export default function Tasks() {
                 <DialogTitle>Create New Task</DialogTitle>
                 <DialogDescription>Add a new task to your list</DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
-                <Input
-                  placeholder="Task title"
-                  value={newTask}
-                  onChange={(e) => setNewTask(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleAddTask()}
-                />
+              <div className="space-y-4 pt-1">
+                {/* Title */}
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-slate-700">Title <span className="text-red-500">*</span></label>
+                  <Input
+                    placeholder="e.g. Finish project report"
+                    value={newTask}
+                    onChange={(e) => setNewTask(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
+                    autoFocus
+                  />
+                </div>
+
+                {/* Priority */}
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-slate-700">Priority</label>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={`w-full justify-between border-slate-300 font-normal ${
+                          newPriority === 'high' ? 'text-red-600' :
+                          newPriority === 'medium' ? 'text-yellow-600' : 'text-green-600'
+                        }`}
+                      >
+                        {newPriority.charAt(0).toUpperCase() + newPriority.slice(1)}
+                        <Filter className="w-3.5 h-3.5 opacity-50" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-full">
+                      <DropdownMenuItem onClick={() => setNewPriority('high')} className="text-red-600">High</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setNewPriority('medium')} className="text-yellow-600">Medium</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setNewPriority('low')} className="text-green-600">Low</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
+                {/* Deadline (optional) */}
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-slate-700">
+                    Deadline <span className="text-slate-400 font-normal">(optional)</span>
+                  </label>
+                  <Input
+                    type="date"
+                    value={newDeadline}
+                    onChange={(e) => setNewDeadline(e.target.value)}
+                    className="border-slate-300"
+                    min={new Date().toISOString().split('T')[0]}
+                  />
+                </div>
+
                 <Button
                   onClick={handleAddTask}
                   className="w-full bg-slate-900 text-white hover:bg-slate-800"
+                  disabled={!newTask.trim()}
                 >
                   Add Task
                 </Button>
