@@ -17,13 +17,18 @@ try:
     firebase_admin.get_app()
 except ValueError:
     try:
+        project_id = os.environ.get("FIREBASE_PROJECT_ID") or os.environ.get("GOOGLE_CLOUD_PROJECT")
         if os.path.exists(firebase_key):
             cred = credentials.Certificate(firebase_key)
             logger.info("Initializing Firebase with certificate file.")
+            firebase_admin.initialize_app(cred)
         else:
             cred = credentials.ApplicationDefault()
             logger.info("Initializing Firebase with Application Default Credentials.")
-        firebase_admin.initialize_app(cred)
+            if project_id:
+                firebase_admin.initialize_app(cred, {"projectId": project_id})
+            else:
+                firebase_admin.initialize_app(cred)
     except Exception as e:
         logger.error(f"Firebase initialization failed: {e}")
         raise
