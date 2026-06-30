@@ -56,7 +56,6 @@ app.include_router(tasks.router, prefix="/api/tasks", tags=["Tasks"])
 #calender router- in calender/router.py -added hte whole router here it contains all endpoints
 app.include_router(router.router)
 
-# Agent 0 — Inbox Intelligence Agent endpoints
+#agent endpoints
 app.include_router(inbox_router)
 
-#app.include_router(agents.router, prefix="/api/agents", tags=["Agents"])
