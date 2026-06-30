@@ -1,5 +1,6 @@
 // src/components/layout/Topbar.jsx
 
+import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +15,31 @@ import { Bell, Search, Settings, User } from 'lucide-react';
 
 export function Topbar() {
   const location = useLocation();
+  const token = localStorage.getItem("token");
+  const [profile, setProfile] = useState({ name: 'Yukta', email: 'you@example.com' });
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!token) return;
+      try {
+        const response = await fetch("http://localhost:8000/api/users/profile", {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setProfile({
+            name: data.profile?.name || 'Yukta',
+            email: data.email || 'you@example.com',
+          });
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchProfile();
+  }, [token]);
 
   // Get page title based on route
   const getTitleFromPath = (path) => {
@@ -23,7 +49,7 @@ export function Topbar() {
       '/calendar': 'Calendar',
       '/settings': 'Settings',
     };
-    return titles[path] || 'PA';
+    return titles[path] || 'Momentum- PlanMind AI';
   };
 
   return (
@@ -78,8 +104,8 @@ export function Topbar() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <div className="px-2 py-1.5">
-                <p className="text-sm font-semibold text-slate-900">Yukta</p>
-                <p className="text-xs text-slate-500">you@example.com</p>
+                <p className="text-sm font-semibold text-slate-900">{profile.name}</p>
+                <p className="text-xs text-slate-500">{profile.email}</p>
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem>

@@ -18,7 +18,7 @@ export function Navbar() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center">
-          <span className="text-2xl font-bold text-slate-900 tracking-tight">PA</span>
+          <span className="text-2xl font-bold text-slate-900 tracking-tight">Momentum- PlanMind AI</span>
         </div>
 
         {/* Desktop Navigation */}

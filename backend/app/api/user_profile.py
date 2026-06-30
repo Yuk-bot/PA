@@ -51,11 +51,32 @@ async def create_profile(
 
 @router.get("/profile")
 async def get_profile(user=Depends(verify_token)):
-    
     try:
         uid = user['uid']
-        profile = await get_user_profile(uid)
-        return profile
-    
+        try:
+            profile = await get_user_profile(uid)
+            return profile
+        except Exception:
+            email = user.get('email', '')
+            name = email.split('@')[0] if email else 'User'
+            default_doc = {
+                "email": email,
+                "profile": {
+                    "name": name,
+                    "profession": "student",
+                    "working_hours_start": "09:00",
+                    "working_hours_end": "18:00",
+                    "productive_hours": ["09:00-11:00"],
+                    "preferred_session_duration": 60,
+                    "timezone": "IST",
+                },
+                "preferences": {
+                    "email_reminders": True,
+                    "push_notifications": False,
+                    "daily_summary": True,
+                }
+            }
+            firebase_db.collection("users").document(uid).set(default_doc)
+            return default_doc
     except Exception as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))

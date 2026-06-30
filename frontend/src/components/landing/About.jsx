@@ -26,12 +26,12 @@ export function About() {
           <div className="p-8 sm:p-10 lg:p-12">
             {/* Title */}
             <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-6">
-              What is PA?
+              What is Momentum?
             </h2>
 
             {/* Description */}
             <p className="text-lg text-slate-700 mb-8 leading-relaxed font-light">
-              PA combines intelligent AI agents to work together seamlessly, giving you a productivity system that learns your habits, understands your priorities, and adapts to your unique working style. No more juggling tools or missing deadlines—PA handles the complexity while you focus on what matters.
+              Momentum combines intelligent AI agents to work together seamlessly, giving you a productivity system that learns your habits, understands your priorities, and adapts to your unique working style. No more juggling tools or missing deadlines—PA handles the complexity while you focus on what matters.
             </p>
 
             {/* Features List */}

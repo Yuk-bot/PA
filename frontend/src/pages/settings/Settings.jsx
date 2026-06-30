@@ -65,7 +65,7 @@ export default function Settings() {
   const loadProfile = async () => {
     if (!token) return;
     try {
-      const res = await fetch("http://localhost:8000/api/profile", {
+      const res = await fetch("http://localhost:8000/api/users/profile", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -171,7 +171,7 @@ export default function Settings() {
   const handleSaveProfile = async () => {
     if (!token) return;
     try {
-      const res = await fetch("http://localhost:8000/api/profile", {
+      const res = await fetch("http://localhost:8000/api/users/profile", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

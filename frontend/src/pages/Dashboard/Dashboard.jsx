@@ -24,6 +24,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [planGenerating, setPlanGenerating] = useState(false);
+  const [userName, setUserName] = useState("Yukta");
 
   const handleGenerateSubtasks = async () => {
     setPlanGenerating(true);
@@ -68,7 +69,27 @@ export default function Dashboard() {
         setLoading(false);
       }
     };
+
+    const fetchProfile = async () => {
+      try {
+        const response = await fetch(`${backend_api}/users/profile`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.profile?.name) {
+            setUserName(data.profile.name);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching profile:', err);
+      }
+    };
+
     fetchTasks();
+    fetchProfile();
   }, [token]);
 
   const completedCount = tasks.filter((t) => t.status === 'completed').length;
@@ -82,7 +103,7 @@ export default function Dashboard() {
         {/* Welcome Section */}
         <div>
           <h2 className="text-4xl font-bold text-slate-900 mb-2">
-            Good Morning, Yukta
+            Good Morning, {userName}
           </h2>
           <p className="text-slate-600">
             {pendingCount} tasks due. Let's make it productive.

@@ -188,7 +188,20 @@ const handleEmailSignup = async (e) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        fullName: formData.fullName,
+        profile_data: {
+          name: formData.fullName,
+          profession: formData.profession || "student",
+          working_hours_start: formData.workingHoursStart || "09:00",
+          working_hours_end: formData.workingHoursEnd || "18:00",
+          productive_hours: formData.productiveHours || ["09:00-11:00"],
+          preferred_session_duration: parseInt(formData.sessionDuration) || 60,
+          timezone: formData.timezone || "IST",
+        },
+        pref_data: {
+          email_reminders: true,
+          push_notifications: false,
+          daily_summary: true,
+        },
       }),
     });
 

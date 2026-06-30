@@ -1,6 +1,6 @@
 // src/components/layout/Sidebar.jsx
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -21,6 +21,31 @@ export function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
+  const token = localStorage.getItem("token");
+  const [profile, setProfile] = useState({ name: 'Yukta', email: 'you@example.com' });
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!token) return;
+      try {
+        const response = await fetch("http://localhost:8000/api/users/profile", {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setProfile({
+            name: data.profile?.name || 'Yukta',
+            email: data.email || 'you@example.com',
+          });
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchProfile();
+  }, [token]);
 
   const navItems = [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
@@ -43,7 +68,7 @@ export function Sidebar() {
       <div className="p-6 space-y-8">
         {/* Logo */}
         <div className="flex items-center gap-2">
-          <span className="text-2xl font-bold text-slate-900 tracking-tight">PA</span>
+          <span className="text-xl font-bold text-slate-900 tracking-tight">Momentum- PlanMind AI</span>
           <span className="text-xs text-slate-500 font-medium">v0.1</span>
         </div>
 
@@ -75,12 +100,12 @@ export function Sidebar() {
         <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors">
           <Avatar className="w-10 h-10">
             <AvatarFallback className="bg-slate-200 text-slate-700 font-semibold">
-              YK
+              {profile.name.slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-slate-900 truncate">Yukta</p>
-            <p className="text-xs text-slate-500 truncate">you@example.com</p>
+            <p className="text-sm font-medium text-slate-900 truncate">{profile.name}</p>
+            <p className="text-xs text-slate-500 truncate">{profile.email}</p>
           </div>
         </div>
 
@@ -115,7 +140,7 @@ export function Sidebar() {
         >
           {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </Button>
-        <span className="ml-3 text-lg font-bold text-slate-900">PA</span>
+        <span className="ml-3 text-lg font-bold text-slate-900">Momentum- PlanMind AI</span>
       </div>
 
       {/* Mobile Sidebar Sheet */}
