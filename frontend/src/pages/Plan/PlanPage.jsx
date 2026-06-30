@@ -24,7 +24,6 @@ import { Separator } from "@/components/ui/separator";
 import {
   AlertCircle,
   AlertTriangle,
-  BrainCircuit,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -49,6 +48,8 @@ import {
   addSubtask,
   deleteSubtask,
   regeneratePlan,
+  generateSubtasks,
+  schedulePlan,
 } from "@/services/planningService";
 
 function fmt(iso) {
@@ -93,7 +94,7 @@ function SummaryCard({ summary, planId }) {
     <div className="space-y-4">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: "Tasks Planned", value: total_tasks, icon: BrainCircuit, color: "text-violet-600" },
+          { label: "Tasks Planned", value: total_tasks, icon: Zap, color: "text-violet-600" },
           { label: "Fully Scheduled", value: tasks_scheduled, icon: CheckCircle2, color: "text-emerald-600" },
           { label: "Hours Scheduled", value: `${total_scheduled_hours}h`, icon: Clock, color: "text-blue-600" },
           { label: "Days Span", value: schedule_days_span || 1, icon: CalendarDays, color: "text-slate-600" },
@@ -471,6 +472,8 @@ export default function PlanPage() {
   const [plan, setPlan] = useState(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [generatingSubtasks, setGeneratingSubtasks] = useState(false);
+  const [schedulingPlan, setSchedulingPlan] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -508,6 +511,35 @@ export default function PlanPage() {
       setError(err.message || "Failed to generate plan");
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleGenerateSubtasks = async () => {
+    setGeneratingSubtasks(true);
+    setError(null);
+    try {
+      const result = await generateSubtasks(token);
+      setPlan(result.plan);
+      flash("Subtasks generated! Now generate your plan to schedule them.");
+    } catch (err) {
+      setError(err.message || "Failed to generate subtasks");
+    } finally {
+      setGeneratingSubtasks(false);
+    }
+  };
+
+  const handleSchedulePlan = async () => {
+    if (!plan) return;
+    setSchedulingPlan(true);
+    setError(null);
+    try {
+      const result = await schedulePlan(token, plan.plan_id);
+      setPlan(result.plan);
+      flash("Plan scheduled successfully!");
+    } catch (err) {
+      setError(err.message || "Failed to schedule plan");
+    } finally {
+      setSchedulingPlan(false);
     }
   };
 
@@ -554,7 +586,7 @@ export default function PlanPage() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h2 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
-              <BrainCircuit className="w-7 h-7 text-violet-600" />
+              <Zap className="w-7 h-7 text-violet-600" />
               Generated Plan
             </h2>
             <p className="text-sm text-slate-500 mt-1">
@@ -576,14 +608,24 @@ export default function PlanPage() {
                 Regenerate
               </Button>
             )}
+            {plan && plan.status === "draft" && (
+              <Button
+                size="sm"
+                onClick={handleSchedulePlan}
+                disabled={schedulingPlan}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {schedulingPlan ? "Scheduling Plan..." : "Generate My Plan"}
+              </Button>
+            )}
             <Button
               size="sm"
-              onClick={handleGenerate}
-              disabled={generating}
+              onClick={handleGenerateSubtasks}
+              disabled={generatingSubtasks}
               className="gap-2 bg-violet-600 hover:bg-violet-700 text-white"
             >
-              {generating ? <Loader className="w-4 h-4 animate-spin" /> : <BrainCircuit className="w-4 h-4" />}
-              {generating ? "Generating…" : plan ? "New Plan" : "Generate Plan"}
+              {generatingSubtasks ? <Loader className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+              {generatingSubtasks ? "Generating..." : plan ? "Regenerate Subtasks" : "Generate Subtasks"}
             </Button>
           </div>
         </div>
@@ -618,17 +660,17 @@ export default function PlanPage() {
           <Card className="border-slate-200/50 bg-gradient-to-br from-violet-50 to-slate-50 p-12">
             <div className="flex flex-col items-center text-center gap-5">
               <div className="w-20 h-20 rounded-2xl bg-violet-100 border border-violet-200 flex items-center justify-center">
-                <BrainCircuit className="w-10 h-10 text-violet-500" />
+                <Zap className="w-10 h-10 text-violet-500" />
               </div>
               <div>
                 <h3 className="text-xl font-semibold text-slate-900">No plan yet</h3>
                 <p className="text-slate-500 text-sm mt-2 max-w-sm">
-                  Click "Generate Plan" to let the AI analyze all your pending tasks, break them into subtasks, and schedule them into your free time slots automatically.
+                  Click "Generate Subtasks" to let the AI analyze all your pending tasks and calendar events, break them down into actionable subtasks, and prepare your schedule.
                 </p>
               </div>
-              <Button onClick={handleGenerate} disabled={generating} className="gap-2 bg-violet-600 hover:bg-violet-700 text-white px-6">
-                {generating ? <Loader className="w-4 h-4 animate-spin" /> : <BrainCircuit className="w-4 h-4" />}
-                {generating ? "Generating…" : "Generate Plan"}
+              <Button onClick={handleGenerateSubtasks} disabled={generatingSubtasks} className="gap-2 bg-violet-600 hover:bg-violet-700 text-white px-6">
+                {generatingSubtasks ? <Loader className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                {generatingSubtasks ? "Generating..." : "Generate Subtasks"}
               </Button>
               <Button variant="ghost" size="sm" onClick={() => navigate("/tasks")} className="text-slate-500 hover:text-slate-900 text-xs">
                 Go to Tasks →

@@ -13,6 +13,24 @@ export async function generatePlan(token) {
   return res.json();
 }
 
+export async function generateSubtasks(token) {
+  const res = await fetch(`${BASE}/generate-subtasks`, { method: "POST", headers: headers(token) });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Subtask generation failed (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function schedulePlan(token, planId) {
+  const res = await fetch(`${BASE}/plans/${planId}/schedule`, { method: "POST", headers: headers(token) });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Plan scheduling failed (${res.status})`);
+  }
+  return res.json();
+}
+
 export async function getLatestPlan(token) {
   const res = await fetch(`${BASE}/latest`, { headers: headers(token) });
   if (res.status === 404) return null;

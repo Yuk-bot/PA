@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -112,7 +112,8 @@ function getMeetingLink(event) {
   return match ? match[0] : null;
 }
 
-function TaskCard({ task }) {
+function TaskCard({ task, subtasks }) {
+  const [expanded, setExpanded] = useState(false);
   const priorityColor =
     task.priority === "high"
       ? "text-red-600 bg-red-50 border-red-100"
@@ -122,7 +123,7 @@ function TaskCard({ task }) {
 
   return (
     <Card className="border-violet-200/60 bg-violet-50/60 backdrop-blur-sm hover:bg-violet-50/90 transition-all duration-200 overflow-hidden">
-      <div className="p-4 flex items-start gap-3">
+      <div className="p-4 flex items-start gap-3 cursor-pointer select-none" onClick={() => setExpanded(p => !p)}>
         <CheckSquare className="w-4 h-4 text-violet-500 mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
@@ -148,8 +149,32 @@ function TaskCard({ task }) {
               hour12: true,
             })}
           </div>
+          {expanded && subtasks && subtasks.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-violet-200/40">
+              <p className="text-[10px] font-semibold text-violet-700 uppercase tracking-wider mb-2">
+                Subtasks
+              </p>
+              <div className="space-y-1.5 pl-3 border-l-2 border-violet-300">
+                {subtasks.map((s) => (
+                  <div key={s.subtask_id} className="flex items-center gap-2 text-xs text-slate-700">
+                    <div className={`w-1 h-1 rounded-full ${s.status === 'completed' ? 'bg-slate-300' : 'bg-violet-400'}`} />
+                    <span className={s.status === 'completed' ? 'line-through text-slate-400' : ''}>
+                      {s.title}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
+      {expanded && (
+        <div className="px-4 pb-3 border-t border-violet-100/50 pt-2 bg-violet-100/10 flex justify-end">
+          <Link to="/plan" className="text-xs font-medium text-violet-700 hover:underline">
+            View on Plan Page →
+          </Link>
+        </div>
+      )}
     </Card>
   );
 }
@@ -186,7 +211,7 @@ function SkeletonSection() {
   );
 }
 
-function EventCard({ event }) {
+function EventCard({ event, subtasks }) {
   const [expanded, setExpanded] = useState(false);
   const meetingLink = getMeetingLink(event);
 
@@ -281,6 +306,23 @@ function EventCard({ event }) {
                 )}
               </div>
             )}
+            {subtasks && subtasks.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-slate-100">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                  Generated Subtasks
+                </p>
+                <div className="space-y-1.5 pl-3 border-l-2 border-violet-100">
+                  {subtasks.map((s) => (
+                    <div key={s.subtask_id} className="flex items-center gap-2 text-xs text-slate-600">
+                      <div className={`w-1 h-1 rounded-full ${s.status === 'completed' ? 'bg-slate-300' : 'bg-violet-400'}`} />
+                      <span className={s.status === 'completed' ? 'line-through text-slate-400' : ''}>
+                        {s.title}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -316,7 +358,7 @@ export default function CalendarPage() {
   const [freeSlots, setFreeSlots] = useState(null);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
-
+  const [latestPlan, setLatestPlan] = useState(null);
   const [isGmailConnected, setIsGmailConnected] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [isGmailSyncing, setIsGmailSyncing] = useState(false);
@@ -363,9 +405,11 @@ export default function CalendarPage() {
             )
           );
         }
-      } catch {
-        // Task overlay is non-critical; silently skip
-      }
+      } catch {}
+      try {
+        const p = await getLatestPlan(token);
+        setLatestPlan(p);
+      } catch {}
 
       setIsGmailConnected(gmailStatus.connected);
       if (gmailStatus.connected) {
@@ -408,8 +452,8 @@ export default function CalendarPage() {
         oauthError === "missing_code"
           ? "OAuth was cancelled or the code was missing."
           : oauthError === "missing_state"
-          ? "OAuth state was invalid. Please try again."
-          : `OAuth error: ${oauthError}`;
+            ? "OAuth state was invalid. Please try again."
+            : `OAuth error: ${oauthError}`;
       setError(readable);
       setSearchParams({}, { replace: true });
     }
@@ -591,8 +635,8 @@ export default function CalendarPage() {
               {loading
                 ? "Loading…"
                 : isConnected
-                ? `${events.length} event${events.length !== 1 ? "s" : ""}${tasks.length > 0 ? `, ${tasks.length} task deadline${tasks.length !== 1 ? "s" : ""}` : ""}`
-                : "Connect your Google Calendar to get started"}
+                  ? `${events.length} event${events.length !== 1 ? "s" : ""}${tasks.length > 0 ? `, ${tasks.length} task deadline${tasks.length !== 1 ? "s" : ""}` : ""}`
+                  : "Connect your Google Calendar to get started"}
             </p>
           </div>
 
@@ -630,8 +674,8 @@ export default function CalendarPage() {
                   ? "Refreshing…"
                   : "Connecting…"
                 : isConnected
-                ? "Refresh"
-                : "Sync Google Calendar"}
+                  ? "Refresh"
+                  : "Sync Google Calendar"}
             </Button>
           </div>
         </div>
@@ -726,13 +770,15 @@ export default function CalendarPage() {
                     </div>
 
                     <div className="space-y-2">
-                      {items.map((item) =>
-                        item.itemType === "task" ? (
-                          <TaskCard key={`task-${item.id}`} task={item} />
-                        ) : (
-                          <EventCard key={item.event_id} event={item} />
-                        )
-                      )}
+                      {items.map((item) => {
+                        if (item.itemType === "task") {
+                          const taskSubtasks = latestPlan?.task_plans?.find((tp) => tp.task_id === item.id)?.subtasks || [];
+                          return <TaskCard key={`task-${item.id}`} task={item} subtasks={taskSubtasks} />;
+                        } else {
+                          const eventSubtasks = latestPlan?.task_plans?.find((tp) => tp.task_id === "event_" + item.event_id)?.subtasks || [];
+                          return <EventCard key={item.event_id} event={item} subtasks={eventSubtasks} />;
+                        }
+                      })}
                     </div>
                   </div>
                 ))
@@ -847,13 +893,12 @@ export default function CalendarPage() {
                             )}
                             {s.urgency && (
                               <span
-                                className={`text-[9px] font-semibold px-1 rounded uppercase ${
-                                  s.urgency === "high"
-                                    ? "bg-red-50 text-red-700 border border-red-100"
-                                    : s.urgency === "medium"
+                                className={`text-[9px] font-semibold px-1 rounded uppercase ${s.urgency === "high"
+                                  ? "bg-red-50 text-red-700 border border-red-100"
+                                  : s.urgency === "medium"
                                     ? "bg-amber-50 text-amber-700 border border-amber-100"
                                     : "bg-emerald-50 text-emerald-700 border border-emerald-100"
-                                }`}
+                                  }`}
                               >
                                 {s.urgency}
                               </span>

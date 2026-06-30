@@ -39,7 +39,7 @@ export function DashboardLayout({ children }) {
       <Sidebar />
 
       {/* Main Content Area */}
-      <div className="flex flex-col flex-1 md:ml-64 lg:mr-80 overflow-hidden">
+      <div className="flex flex-col flex-1 md:ml-64 overflow-hidden">
         {/* Mobile Header */}
         <div className="md:hidden h-16 border-b border-slate-200/50" />
 

@@ -1,6 +1,7 @@
 
 
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -18,11 +19,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { CheckSquare2, Plus, Filter, Trash2, Loader } from 'lucide-react';
+import { CheckSquare2, Plus, Filter, Trash2, Loader, Zap, Pencil, ChevronDown, ChevronUp } from 'lucide-react';
+import { generateSubtasks, getLatestPlan } from '@/services/planningService';
 
 const API_BASE = 'http://localhost:8000/api';
 
 export default function Tasks() {
+  const navigate = useNavigate();
   const [tasks, setTasks] = useState([]);
   const [filter, setFilter] = useState('all');
   const [newTask, setNewTask] = useState('');
@@ -31,6 +34,66 @@ export default function Tasks() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [planGenerating, setPlanGenerating] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDeadline, setEditDeadline] = useState('');
+  const [editPriority, setEditPriority] = useState('medium');
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [latestPlan, setLatestPlan] = useState(null);
+  const [expandedTasks, setExpandedTasks] = useState({});
+
+  const handleStartEdit = (task) => {
+    setEditingTask(task);
+    setEditTitle(task.title);
+    setEditDeadline(task.deadline ? new Date(task.deadline).toISOString().slice(0, 16) : '');
+    setEditPriority(task.priority);
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editTitle.trim()) return;
+    try {
+      const response = await fetch(`${API_BASE}/tasks/${editingTask.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: editTitle.trim(),
+          deadline: editDeadline ? new Date(editDeadline).toISOString() : null,
+          priority: editPriority,
+        }),
+      });
+      if (response.ok) {
+        setTasks(
+          tasks.map((t) =>
+            t.id === editingTask.id
+              ? { ...t, title: editTitle.trim(), deadline: editDeadline ? new Date(editDeadline).toISOString() : '', priority: editPriority }
+              : t
+          )
+        );
+        setEditDialogOpen(false);
+        setEditingTask(null);
+      }
+    } catch (err) {
+      console.error('Error updating task:', err);
+    }
+  };
+
+  const handleGenerateSubtasks = async () => {
+    setPlanGenerating(true);
+    setError(null);
+    try {
+      await generateSubtasks(token);
+      navigate('/plan');
+    } catch (err) {
+      setError(err.message || 'Failed to generate subtasks');
+    } finally {
+      setPlanGenerating(false);
+    }
+  };
 
   // Get token from localStorage
   const token = localStorage.getItem('token');
@@ -59,10 +122,18 @@ export default function Tasks() {
       setLoading(false);
     }
   };
-
+  const fetchLatestPlan = async () => {
+    try {
+      const p = await getLatestPlan(token);
+      setLatestPlan(p);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     fetchTasks();
+    fetchLatestPlan();
   }, []);
 
 
@@ -186,14 +257,28 @@ export default function Tasks() {
             </p>
           </div>
 
-          {/* Add Task Dialog */}
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2 bg-slate-900 text-white hover:bg-slate-800">
-                <Plus className="w-4 h-4" />
-                Add Task
-              </Button>
-            </DialogTrigger>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={handleGenerateSubtasks}
+              disabled={planGenerating || tasks.filter((t) => t.status !== 'completed').length === 0}
+              className="gap-2 bg-violet-600 hover:bg-violet-700 text-white"
+            >
+              {planGenerating ? (
+                <Loader className="w-4 h-4 animate-spin" />
+              ) : (
+                <Zap className="w-4 h-4" />
+              )}
+              {planGenerating ? 'Generating Subtasks...' : 'Generate Subtasks'}
+            </Button>
+
+            {/* Add Task Dialog */}
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="gap-2 bg-slate-900 text-white hover:bg-slate-800">
+                  <Plus className="w-4 h-4" />
+                  Add Task
+                </Button>
+              </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Create New Task</DialogTitle>
@@ -261,6 +346,7 @@ export default function Tasks() {
             </DialogContent>
           </Dialog>
         </div>
+      </div>
 
         {/* Filters */}
         <div className="flex gap-2">
@@ -315,11 +401,14 @@ export default function Tasks() {
             </div>
           ) : (
             <div className="divide-y divide-slate-200/50">
-              {filteredTasks.map((task) => (
-                <div
-                  key={task.id}
-                  className="p-4 hover:bg-slate-50/50 transition-colors flex items-center gap-4 group"
-                >
+              {filteredTasks.map((task) => {
+                const subtasks = latestPlan?.task_plans?.find((tp) => tp.task_id === task.id)?.subtasks || [];
+                const isExpanded = !!expandedTasks[task.id];
+                return (
+                  <div
+                    key={task.id}
+                    className="p-4 hover:bg-slate-50/50 transition-colors flex items-start gap-4 group"
+                  >
                   <input
                     type="checkbox"
                     checked={task.status === 'completed'}
@@ -349,6 +438,32 @@ export default function Tasks() {
                           })
                         : 'No date'}
                     </p>
+                    {subtasks.length > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedTasks(prev => ({ ...prev, [task.id]: !prev[task.id] }));
+                        }}
+                        className="text-xs text-violet-600 hover:text-violet-700 p-0 h-auto font-medium mt-1.5 select-none flex items-center gap-1"
+                      >
+                        {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                        {isExpanded ? 'Hide Subtasks' : `Show Subtasks (${subtasks.length})`}
+                      </Button>
+                    )}
+                    {isExpanded && subtasks.length > 0 && (
+                      <div className="mt-2 pl-3 border-l-2 border-violet-100 space-y-1.5 animate-fadeIn">
+                        {subtasks.map((s) => (
+                          <div key={s.subtask_id} className="flex items-center gap-2 text-xs text-slate-600">
+                            <div className={`w-1 h-1 rounded-full ${s.status === 'completed' ? 'bg-slate-300' : 'bg-violet-400'}`} />
+                            <span className={s.status === 'completed' ? 'line-through text-slate-400' : ''}>
+                              {s.title}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <span
@@ -362,17 +477,85 @@ export default function Tasks() {
                   <Button
                     variant="ghost"
                     size="sm"
+                    onClick={() => handleStartEdit(task)}
+                    className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => handleDeleteTask(task.id)}
                     className="text-slate-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </Card>
       </div>
+
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Task</DialogTitle>
+            <DialogDescription>Modify task details</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-1">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700">Title <span className="text-red-500">*</span></label>
+              <Input
+                placeholder="e.g. Finish project report"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit()}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700">Priority</label>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={`w-full justify-between border-slate-300 font-normal ${
+                      editPriority === 'high' ? 'text-red-600' :
+                      editPriority === 'medium' ? 'text-yellow-600' : 'text-green-600'
+                    }`}
+                  >
+                    {editPriority.charAt(0).toUpperCase() + editPriority.slice(1)}
+                    <Filter className="w-3.5 h-3.5 opacity-50" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-full">
+                  <DropdownMenuItem onClick={() => setEditPriority('high')} className="text-red-600">High</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setEditPriority('medium')} className="text-yellow-600">Medium</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setEditPriority('low')} className="text-green-600">Low</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700">Deadline</label>
+              <Input
+                type="datetime-local"
+                value={editDeadline}
+                onChange={(e) => setEditDeadline(e.target.value)}
+                className="border-slate-300"
+              />
+            </div>
+            <Button
+              onClick={handleSaveEdit}
+              className="w-full bg-slate-900 text-white hover:bg-slate-800"
+              disabled={!editTitle.trim()}
+            >
+              Save Changes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

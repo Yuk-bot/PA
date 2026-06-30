@@ -7,7 +7,7 @@ from firebase_admin import firestore
 from middleware.auth import verify_token
 from services.task_service import get_all_tasks
 
-from agents.planning.schemas import ReorderRequest, SubtaskCreate, SubtaskUpdate
+from agents.planning.schemas import ReorderRequest, SubtaskCreate, SubtaskUpdate, GlobalPlan, TaskPlanSchema, SubtaskSchema
 from agents.planning.decomposition_agent import decompose_all_tasks
 from agents.planning.priority_agent import prioritize_tasks
 from agents.planning.planner_agent import generate_global_plan
@@ -32,23 +32,77 @@ def _get_profile(uid: str) -> dict:
     return doc.to_dict().get("profile", {}) if doc.exists else {}
 
 
-@router.post("/generate")
-async def generate_plan(user=Depends(verify_token)):
+@router.post("/generate-subtasks")
+async def generate_subtasks(user=Depends(verify_token)):
     uid = user["uid"]
     try:
         tasks = await get_all_tasks(uid)
         pending = [t for t in tasks if t.get("status") != "completed" and t.get("title")]
-        if not pending:
-            raise HTTPException(status_code=400, detail="No pending tasks found to plan.")
+        calendar_items = []
+        from calender.oauth_handler import get_stored_credentials
+        from calender.calender_client import GoogleCalendarClient
+        creds = get_stored_credentials(uid)
+        if creds and creds.connected:
+            try:
+                client = GoogleCalendarClient(creds, uid)
+                events = client.get_events(max_results=50, days_ahead=14)
+                for e in events:
+                    calendar_items.append({
+                        "id": f"event_{e.event_id}",
+                        "title": e.title,
+                        "description": e.description or "",
+                        "priority": "medium",
+                        "deadline": e.start.isoformat() if e.start else None,
+                        "estimated_hours": 1.0
+                    })
+            except Exception as e_exc:
+                logger.error(f"Failed to fetch calendar events for subtasks: {e_exc}")
+        all_items = pending + calendar_items
+        if not all_items:
+            raise HTTPException(status_code=400, detail="No pending tasks or calendar events found to plan.")
+        subtasks_map = decompose_all_tasks(all_items)
+        from uuid import uuid4
+        task_plans = []
+        for item in all_items:
+            item_id = item.get("id") or item.get("task_id", "")
+            subtasks = subtasks_map.get(item_id, [])
+            task_plans.append(TaskPlanSchema(
+                task_id=item_id,
+                task_title=item.get("title", "Untitled"),
+                task_deadline=item.get("deadline"),
+                task_priority=item.get("priority", "medium"),
+                priority_score=0.0,
+                can_complete_on_time=True,
+                warning=None,
+                subtasks=subtasks
+            ))
+        plan = GlobalPlan(
+            plan_id=str(uuid4()),
+            user_id=uid,
+            status="draft",
+            task_plans=task_plans
+        )
+        save_plan(plan)
+        return {"plan_id": plan.plan_id, "plan": plan.model_dump()}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error(f"Subtask generation failed: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Subtask generation failed: {str(exc)}")
 
+
+@router.post("/plans/{plan_id}/schedule")
+async def schedule_draft_plan(plan_id: str, user=Depends(verify_token)):
+    uid = user["uid"]
+    try:
+        plan = get_plan(uid, plan_id)
+        if not plan:
+            raise HTTPException(status_code=404, detail="Plan not found.")
         profile = _get_profile(uid)
         wh_start = profile.get("working_hours_start", "09:00")
         wh_end = profile.get("working_hours_end", "18:00")
         prod_hours = profile.get("productive_hours", [])
         session_dur = int(profile.get("preferred_session_duration") or 60)
-
-        subtasks_map = decompose_all_tasks(pending)
-
         free_slots = get_multi_day_free_slots(
             uid=uid,
             working_hours_start=wh_start,
@@ -57,25 +111,43 @@ async def generate_plan(user=Depends(verify_token)):
             days_ahead=14,
         )
         total_free_minutes = sum(s.duration_minutes for s in free_slots)
-
-        task_plans = prioritize_tasks(pending, subtasks_map, total_free_minutes)
-        plan = generate_global_plan(uid, task_plans, free_slots, session_dur)
-        plan_id = save_plan(plan)
-
-        for task in pending:
-            task_id = task.get("id")
-            if task_id:
+        items_for_priority = []
+        for tp in plan.task_plans:
+            items_for_priority.append({
+                "id": tp.task_id,
+                "title": tp.task_title,
+                "deadline": tp.task_deadline,
+                "priority": tp.task_priority
+            })
+        subtasks_map = {tp.task_id: tp.subtasks for tp in plan.task_plans}
+        task_plans = prioritize_tasks(items_for_priority, subtasks_map, total_free_minutes)
+        scheduled_plan = generate_global_plan(uid, task_plans, free_slots, session_dur)
+        scheduled_plan.plan_id = plan_id
+        scheduled_plan.status = "active"
+        save_plan(scheduled_plan)
+        for tp in scheduled_plan.task_plans:
+            if not tp.task_id.startswith("event_"):
                 try:
-                    db.collection("tasks").document(task_id).update({"plan_id": plan_id})
+                    db.collection("tasks").document(tp.task_id).update({"plan_id": plan_id})
                 except Exception:
                     pass
-
-        return {"plan_id": plan_id, "plan": plan.model_dump()}
-
+        return {"plan_id": plan_id, "plan": scheduled_plan.model_dump()}
     except HTTPException:
         raise
     except Exception as exc:
-        logger.error(f"Plan generation failed: {exc}", exc_info=True)
+        logger.error(f"Scheduling failed: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Scheduling failed: {str(exc)}")
+
+
+@router.post("/generate")
+async def generate_plan(user=Depends(verify_token)):
+    uid = user["uid"]
+    try:
+        subtasks_res = await generate_subtasks(user)
+        plan_id = subtasks_res["plan_id"]
+        scheduled_res = await schedule_draft_plan(plan_id, user)
+        return scheduled_res
+    except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Plan generation failed: {str(exc)}")
 
 

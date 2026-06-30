@@ -12,6 +12,7 @@ import {
   Target,
   Loader
 } from 'lucide-react';
+import { generateSubtasks } from '@/services/planningService';
 
 const backend_api='http://localhost:8000/api';
 
@@ -22,6 +23,20 @@ export default function Dashboard() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [planGenerating, setPlanGenerating] = useState(false);
+
+  const handleGenerateSubtasks = async () => {
+    setPlanGenerating(true);
+    setError(null);
+    try {
+      await generateSubtasks(token);
+      navigate('/plan');
+    } catch (err) {
+      setError(err.message || 'Failed to generate subtasks');
+    } finally {
+      setPlanGenerating(false);
+    }
+  };
 
   const today = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -163,39 +178,22 @@ export default function Dashboard() {
                   </Button>
 
                   <Button
+                    onClick={handleGenerateSubtasks}
+                    disabled={planGenerating || tasks.filter((t) => t.status !== 'completed').length === 0}
                     variant="outline"
                     className="w-full justify-start gap-2 border-slate-300"
                   >
-                    <Zap className="w-4 h-4" />
-                    AI Plan My Day
+                    {planGenerating ? (
+                      <Loader className="w-4 h-4 animate-spin text-violet-600" />
+                    ) : (
+                      <Zap className="w-4 h-4 text-violet-600" />
+                    )}
+                    {planGenerating ? 'Generating Subtasks...' : 'Generate Subtasks'}
                   </Button>
                 </div>
               </Card>
             </div>
 
-            {/* Focus Mode Card */}
-            <Card className="border-slate-200/50 bg-gradient-to-br from-indigo-50 to-blue-50 p-6">
-              <div className="flex items-start justify-between">
-                <div className="space-y-3 flex-1">
-                  <div className="flex items-center gap-2">
-                    <Target className="w-5 h-5 text-indigo-600" />
-                    <h3 className="font-semibold text-slate-900">
-                      Productivity Focus Mode
-                    </h3>
-                  </div>
-                  <p className="text-sm text-slate-700">
-                    Start a focused work session. AI will block distractions and keep you on track.
-                  </p>
-                  <div className="flex items-center gap-2 text-xs text-slate-600 mt-2">
-                    <Clock className="w-4 h-4" />
-                    Suggested: 90 min focus block
-                  </div>
-                </div>
-                <Button className="ml-4 bg-indigo-600 text-white hover:bg-indigo-700 whitespace-nowrap">
-                  Start Focus
-                </Button>
-              </div>
-            </Card>
 
             {/* Upcoming Tasks Preview */}
             <Card className="border-slate-200/50 bg-white/70 backdrop-blur-sm p-6">

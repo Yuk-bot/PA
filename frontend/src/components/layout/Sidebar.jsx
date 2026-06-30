@@ -5,12 +5,14 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+
 import {
   LayoutDashboard,
   CheckSquare2,
   Calendar,
   Settings,
   LogOut,
+  Zap,
   Menu,
   X,
 } from 'lucide-react';
@@ -24,6 +26,7 @@ export function Sidebar() {
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Tasks', path: '/tasks', icon: CheckSquare2 },
     { label: 'Calendar', path: '/calendar', icon: Calendar },
+    { label: 'Plan', path: '/plan', icon: Zap },
     { label: 'Settings', path: '/settings', icon: Settings },
   ];
 
@@ -54,11 +57,10 @@ export function Sidebar() {
                 setIsOpen(false);
               }}
               variant={isActive(path) ? 'default' : 'ghost'}
-              className={`w-full justify-start gap-3 ${
-                isActive(path)
-                  ? 'bg-slate-900 text-white hover:bg-slate-800'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
+              className={`w-full justify-start gap-3 ${isActive(path)
+                ? 'bg-slate-900 text-white hover:bg-slate-800'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
             >
               <Icon className="w-4 h-4" />
               {label}

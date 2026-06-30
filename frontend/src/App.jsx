@@ -8,19 +8,20 @@ import Tasks from '@/pages/Tasks/Tasks';
 import Calendar from '@/pages/Calender/Calender';
 import Settings from '@/pages/Settings/Settings';
 import Landing from '@/pages/Landing/Landing';
-import Signup from '@/pages/Signup/Signup';   
+import Signup from '@/pages/Signup/Signup';
 import Login from '@/pages/Login/Login';
 import Profile from '@/pages/Profile/Profile';
+import PlanPage from '@/pages/Plan/PlanPage';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 
 // Protected Route Wrapper
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem('token');
-  
+
   if (!token) {
     return <Navigate to="/" replace />;
   }
-  
+
   return <DashboardLayout>{children}</DashboardLayout>;
 }
 
@@ -64,6 +65,15 @@ function App() {
           element={
             <ProtectedRoute>
               <Settings />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/plan"
+          element={
+            <ProtectedRoute>
+              <PlanPage />
             </ProtectedRoute>
           }
         />
