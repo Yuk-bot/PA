@@ -15,7 +15,13 @@ CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 REDIRECT_URI = os.getenv("GOOGLE_CALENDAR_REDIRECT_URI")
 
 
-SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"] #calender scopes- auth/calender scope added already so all permssions exist
+SCOPES = [
+    "https://www.googleapis.com/auth/calendar.readonly",
+    # Added for Inbox Intelligence Agent (Agent 0)
+    # Allows reading Gmail to extract actionable task suggestions.
+    # Users will be prompted to re-authorize once to grant this scope.
+    "https://www.googleapis.com/auth/gmail.readonly",
+]
 
 db = firestore.client()
 

@@ -3,8 +3,13 @@ from fastapi.middleware import cors
 
 from fastapi import FastAPI, Depends
 from api import user_profile, tasks
+from api.inbox import router as inbox_router
 from calender import router
 from middleware.auth import verify_token
+
+# Import agents package — triggers auto-registration of InboxIntelligenceAgent
+# and all IIA tools into AgentRegistry + ToolRegistry on startup.
+import agents  # noqa: F401
 
 
 
@@ -50,5 +55,8 @@ app.include_router(tasks.router, prefix="/api/tasks", tags=["Tasks"])
 
 #calender router- in calender/router.py -added hte whole router here it contains all endpoints
 app.include_router(router.router)
+
+# Agent 0 — Inbox Intelligence Agent endpoints
+app.include_router(inbox_router)
 
 #app.include_router(agents.router, prefix="/api/agents", tags=["Agents"])

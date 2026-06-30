@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import List
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -30,7 +30,7 @@ class GoogleCalendarClient:
             client_id=os.getenv("OAUTH_CLIENT_ID"),
             client_secret=os.getenv("CLIENT_SECRET"),
             scopes=["https://www.googleapis.com/auth/calendar.readonly"],
-            expiry=datetime.fromtimestamp(self.credentials_obj.expires_at, tz=timezone.utc).replace(tzinfo=None),
+            expiry=datetime.utcfromtimestamp(self.credentials_obj.expires_at),
         )
         
 
@@ -60,8 +60,8 @@ class GoogleCalendarClient:
     def get_events(self, max_results: int = 10, days_ahead: int = 30) -> List[CalendarEvent]:
         
         try:
-            now = datetime.now().isoformat() + "Z"
-            end_date = (datetime.now() + timedelta(days=days_ahead)).isoformat() + "Z"
+            now = datetime.utcnow().isoformat() + "Z"
+            end_date = (datetime.utcnow() + timedelta(days=days_ahead)).isoformat() + "Z"
             
             events_result = self.service.events().list(
                 calendarId="primary",
@@ -80,9 +80,9 @@ class GoogleCalendarClient:
             return []
     
     def get_today_events(self) -> List[CalendarEvent]:
-        """Fetch only today's events"""
+      
         try:
-            today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
             today_end = today_start + timedelta(days=1)
             
             today_start_iso = today_start.isoformat() + "Z"
@@ -124,7 +124,7 @@ class GoogleCalendarClient:
                     start = datetime.fromisoformat(start_data["dateTime"].replace("Z", "+00:00"))
                     end = datetime.fromisoformat(end_data["dateTime"].replace("Z", "+00:00"))
                     
-                    start = start.astimezone().replace(tzinfo=None) #convert to local time
+                    start = start.astimezone().replace(tzinfo=None) #converting to local timezone
                     end = end.astimezone().replace(tzinfo=None)
 
                 attendees = [att.get("email", "") for att in event.get("attendees", [])]

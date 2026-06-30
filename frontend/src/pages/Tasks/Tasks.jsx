@@ -242,11 +242,11 @@ export default function Tasks() {
                     Deadline <span className="text-slate-400 font-normal">(optional)</span>
                   </label>
                   <Input
-                    type="date"
+                    type="datetime-local"
                     value={newDeadline}
                     onChange={(e) => setNewDeadline(e.target.value)}
                     className="border-slate-300"
-                    min={new Date().toISOString().split('T')[0]}
+                    min={new Date(new Date() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
                   />
                 </div>
 
@@ -338,7 +338,16 @@ export default function Tasks() {
                       {task.title}
                     </p>
                     <p className="text-xs text-slate-500 mt-1">
-                      {task.deadline ? new Date(task.deadline).toLocaleDateString() : 'No date'}
+                      {task.deadline
+                        ? new Date(task.deadline).toLocaleString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true,
+                          })
+                        : 'No date'}
                     </p>
                   </div>
 
