@@ -18,6 +18,7 @@ import {
   Mail,
   Zap,
   Trash2,
+  CheckSquare,
 } from "lucide-react";
 import {
   connectCalendar,
@@ -61,7 +62,7 @@ function formatFreeMinutes(mins) {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
-function groupEventsByDate(events) {
+function groupItemsByDate(events, tasks) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
@@ -69,28 +70,34 @@ function groupEventsByDate(events) {
 
   const groups = {};
 
-  for (const event of events) {
-    const d = new Date(event.start);
+  const addToGroup = (dateMs, item) => {
+    const d = new Date(dateMs);
     d.setHours(0, 0, 0, 0);
     const key = d.toISOString();
-
     if (!groups[key]) {
       let label;
-      if (d.getTime() === today.getTime()) {
-        label = "Today";
-      } else if (d.getTime() === tomorrow.getTime()) {
-        label = "Tomorrow";
-      } else {
+      if (d.getTime() === today.getTime()) label = "Today";
+      else if (d.getTime() === tomorrow.getTime()) label = "Tomorrow";
+      else
         label = d.toLocaleDateString("en-US", {
           weekday: "long",
           month: "long",
           day: "numeric",
         });
-      }
-      groups[key] = { label, dateKey: key, events: [] };
+      groups[key] = { label, dateKey: key, items: [] };
     }
+    groups[key].items.push(item);
+  };
 
-    groups[key].events.push(event);
+  for (const event of events) {
+    addToGroup(new Date(event.start).getTime(), { ...event, itemType: "event" });
+  }
+
+  for (const task of tasks) {
+    if (!task.deadline) continue;
+    const deadlineMs = new Date(task.deadline).getTime();
+    if (isNaN(deadlineMs)) continue;
+    addToGroup(deadlineMs, { ...task, itemType: "task" });
   }
 
   return Object.values(groups).sort((a, b) =>
@@ -98,10 +105,53 @@ function groupEventsByDate(events) {
   );
 }
 
+
 function getMeetingLink(event) {
   const desc = event.description || "";
   const match = desc.match(/https?:\/\/[^\s<"]+/);
   return match ? match[0] : null;
+}
+
+function TaskCard({ task }) {
+  const priorityColor =
+    task.priority === "high"
+      ? "text-red-600 bg-red-50 border-red-100"
+      : task.priority === "low"
+      ? "text-emerald-700 bg-emerald-50 border-emerald-100"
+      : "text-amber-700 bg-amber-50 border-amber-100";
+
+  return (
+    <Card className="border-violet-200/60 bg-violet-50/60 backdrop-blur-sm hover:bg-violet-50/90 transition-all duration-200 overflow-hidden">
+      <div className="p-4 flex items-start gap-3">
+        <CheckSquare className="w-4 h-4 text-violet-500 mt-0.5 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h4 className="font-semibold text-slate-900 truncate">{task.title}</h4>
+            <Badge className="text-[10px] bg-violet-100 text-violet-700 border border-violet-200 shrink-0">
+              Task
+            </Badge>
+            <span
+              className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${priorityColor} shrink-0 uppercase`}
+            >
+              {task.priority}
+            </span>
+          </div>
+          {task.description && (
+            <p className="text-xs text-slate-500 mt-1 line-clamp-2">{task.description}</p>
+          )}
+          <div className="flex items-center gap-1 mt-1.5 text-xs text-violet-600">
+            <Clock className="w-3 h-3" />
+            Due:{" "}
+            {new Date(task.deadline).toLocaleString("en-US", {
+              hour: "numeric",
+              minute: "2-digit",
+              hour12: true,
+            })}
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
 }
 
 function SkeletonCard() {
@@ -262,6 +312,7 @@ export default function CalendarPage() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [events, setEvents] = useState([]);
+  const [tasks, setTasks] = useState([]);
   const [freeSlots, setFreeSlots] = useState(null);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
@@ -288,6 +339,7 @@ export default function CalendarPage() {
       if (!eventsResult.connected) {
         setIsConnected(false);
         setEvents([]);
+        setTasks([]);
         setFreeSlots(null);
         setIsGmailConnected(false);
         setSuggestions([]);
@@ -297,6 +349,23 @@ export default function CalendarPage() {
       setIsConnected(true);
       setEvents(eventsResult.events);
       setFreeSlots(slotsResult.connected ? slotsResult : null);
+
+      // Fetch Firestore tasks to overlay on calendar (non-critical)
+      try {
+        const tasksRes = await fetch("http://localhost:8000/api/tasks", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (tasksRes.ok) {
+          const tasksData = await tasksRes.json();
+          setTasks(
+            (tasksData.tasks || []).filter(
+              (t) => t.deadline && t.status !== "completed"
+            )
+          );
+        }
+      } catch {
+        // Task overlay is non-critical; silently skip
+      }
 
       setIsGmailConnected(gmailStatus.connected);
       if (gmailStatus.connected) {
@@ -505,7 +574,7 @@ export default function CalendarPage() {
     }
   };
 
-  const groupedEvents = groupEventsByDate(events);
+  const groupedItems = groupItemsByDate(events, tasks);
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
@@ -522,9 +591,7 @@ export default function CalendarPage() {
               {loading
                 ? "Loading…"
                 : isConnected
-                ? `${events.length} upcoming event${
-                    events.length !== 1 ? "s" : ""
-                  }`
+                ? `${events.length} event${events.length !== 1 ? "s" : ""}${tasks.length > 0 ? `, ${tasks.length} task deadline${tasks.length !== 1 ? "s" : ""}` : ""}`
                 : "Connect your Google Calendar to get started"}
             </p>
           </div>
@@ -627,13 +694,13 @@ export default function CalendarPage() {
         {!loading && isConnected && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
-              {groupedEvents.length === 0 ? (
+              {groupedItems.length === 0 ? (
                 <Card className="border-slate-200/50 bg-white/70 backdrop-blur-sm p-8">
                   <div className="flex flex-col items-center text-center gap-3">
                     <CalendarX className="w-10 h-10 text-slate-300" />
                     <div>
                       <p className="font-medium text-slate-700">
-                        No upcoming events
+                        No upcoming events or task deadlines
                       </p>
                       <p className="text-sm text-slate-400 mt-0.5">
                         Your next 30 days look free.
@@ -642,22 +709,30 @@ export default function CalendarPage() {
                   </div>
                 </Card>
               ) : (
-                groupedEvents.map(({ label, dateKey, events: dayEvents }) => (
+                groupedItems.map(({ label, dateKey, items }) => (
                   <div key={dateKey} className="space-y-3">
                     <div>
                       <h3 className="text-lg font-semibold text-slate-900">
                         {label}
                       </h3>
                       <p className="text-xs text-slate-500 mt-0.5">
-                        {dayEvents.length} event
-                        {dayEvents.length !== 1 ? "s" : ""}
+                        {items.filter((i) => i.itemType === "event").length > 0 &&
+                          `${items.filter((i) => i.itemType === "event").length} event${items.filter((i) => i.itemType === "event").length !== 1 ? "s" : ""}`}
+                        {items.filter((i) => i.itemType === "event").length > 0 &&
+                          items.filter((i) => i.itemType === "task").length > 0 && " · "}
+                        {items.filter((i) => i.itemType === "task").length > 0 &&
+                          `${items.filter((i) => i.itemType === "task").length} task deadline${items.filter((i) => i.itemType === "task").length !== 1 ? "s" : ""}`}
                       </p>
                     </div>
 
                     <div className="space-y-2">
-                      {dayEvents.map((event) => (
-                        <EventCard key={event.event_id} event={event} />
-                      ))}
+                      {items.map((item) =>
+                        item.itemType === "task" ? (
+                          <TaskCard key={`task-${item.id}`} task={item} />
+                        ) : (
+                          <EventCard key={item.event_id} event={item} />
+                        )
+                      )}
                     </div>
                   </div>
                 ))
