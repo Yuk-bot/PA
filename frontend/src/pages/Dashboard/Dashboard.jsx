@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { generateSubtasks } from '@/services/planningService';
 
-const backend_api='http://localhost:8000/api';
+import { API_BASE as backend_api } from '@/services/apiConfig';
 
 export default function Dashboard() {
   const navigate = useNavigate();

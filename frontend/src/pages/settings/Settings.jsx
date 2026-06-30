@@ -28,6 +28,7 @@ import {
   connectGmail,
   disconnectGmail,
 } from "@/services/gmailService";
+import { API_BASE } from "@/services/apiConfig";
 
 export default function Settings() {
   const token = localStorage.getItem("token");
@@ -65,7 +66,7 @@ export default function Settings() {
   const loadProfile = async () => {
     if (!token) return;
     try {
-      const res = await fetch("http://localhost:8000/api/users/profile", {
+      const res = await fetch(`${API_BASE}/users/profile`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -171,7 +172,7 @@ export default function Settings() {
   const handleSaveProfile = async () => {
     if (!token) return;
     try {
-      const res = await fetch("http://localhost:8000/api/users/profile", {
+      const res = await fetch(`${API_BASE}/users/profile`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

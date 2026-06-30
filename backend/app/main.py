@@ -24,9 +24,12 @@ app=FastAPI(
 app.add_middleware(
     cors.CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",  #frontend 
-        "http://localhost:3000",   #alternative ports
-        "http://localhost:8080",  
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://localhost:8080",
+        "https://vibe2ship-863e5.web.app",
+        "https://vibe2ship-863e5.firebaseapp.com",
+        "https://YOUR_DEPLOYED_FIREBASE_HOSTING_URL",
     ],
     allow_credentials=True,
     allow_methods=["*"],

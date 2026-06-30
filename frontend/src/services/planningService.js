@@ -1,4 +1,6 @@
-const BASE = "http://localhost:8000/api/planning";
+import { API_BASE } from './apiConfig';
+
+const BASE = `${API_BASE}/planning`;
 
 function headers(token) {
   return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };

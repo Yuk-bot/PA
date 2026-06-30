@@ -34,6 +34,7 @@ import {
   syncGmail,
 } from "@/services/gmailService";
 import { Separator } from "@/components/ui/separator";
+import { API_BASE } from "@/services/apiConfig";
 
 
 function formatTime(dateStr) {
@@ -394,7 +395,7 @@ export default function CalendarPage() {
 
       // Fetch Firestore tasks to overlay on calendar (non-critical)
       try {
-        const tasksRes = await fetch("http://localhost:8000/api/tasks", {
+        const tasksRes = await fetch(`${API_BASE}/tasks`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (tasksRes.ok) {
@@ -540,7 +541,7 @@ export default function CalendarPage() {
       const deadline = sug.due_date
         ? new Date(sug.due_date).toISOString()
         : null;
-      const res = await fetch("http://localhost:8000/api/tasks", {
+      const res = await fetch(`${API_BASE}/tasks`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -575,7 +576,7 @@ export default function CalendarPage() {
       const deadline = sug.due_date
         ? new Date(sug.due_date).toISOString()
         : null;
-      const res = await fetch("http://localhost:8000/api/tasks", {
+      const res = await fetch(`${API_BASE}/tasks`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

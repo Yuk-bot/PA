@@ -2,6 +2,7 @@ venv/
 .env
 backend/firebase_key.json
 frontend/.env
+backend/app/api/tests
 
 # Python
 __pycache__/

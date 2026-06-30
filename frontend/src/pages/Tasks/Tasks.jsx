@@ -22,7 +22,7 @@ import {
 import { CheckSquare2, Plus, Filter, Trash2, Loader, Zap, Pencil, ChevronDown, ChevronUp } from 'lucide-react';
 import { generateSubtasks, getLatestPlan } from '@/services/planningService';
 
-const API_BASE = 'http://localhost:8000/api';
+import { API_BASE } from '@/services/apiConfig';
 
 export default function Tasks() {
   const navigate = useNavigate();
