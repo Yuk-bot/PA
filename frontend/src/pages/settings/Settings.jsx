@@ -38,6 +38,8 @@ export default function Settings() {
     name: "",
     email: "",
     timezone: "IST",
+    workingHoursStart: "09:00",
+    workingHoursEnd: "18:00",
   });
 
   const [preferences, setPreferences] = useState({
@@ -77,6 +79,8 @@ export default function Settings() {
           name: data.profile?.name || "",
           email: data.email || "",
           timezone: data.profile?.timezone || "IST",
+          workingHoursStart: data.profile?.working_hours_start || "09:00",
+          workingHoursEnd: data.profile?.working_hours_end || "18:00",
         });
         setPreferences({
           emailNotifications: data.preferences?.email_reminders ?? true,
@@ -182,8 +186,8 @@ export default function Settings() {
           profile_data: {
             name: formData.name,
             profession: "professional",
-            working_hours_start: "09:00",
-            working_hours_end: "18:00",
+            working_hours_start: formData.workingHoursStart || "09:00",
+            working_hours_end: formData.workingHoursEnd || "18:00",
             productive_hours: ["09:00-11:00"],
             preferred_session_duration: 60,
             timezone: formData.timezone,
@@ -294,6 +298,49 @@ export default function Settings() {
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-slate-700">
+                    Working Hours Start
+                  </label>
+                  <Input
+                    type="time"
+                    value={formData.workingHoursStart}
+                    onChange={(e) => handleInputChange("workingHoursStart", e.target.value)}
+                    className="mt-1.5 h-10 border-slate-300 bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-slate-700">
+                    Working Hours End
+                  </label>
+                  <Input
+                    type="time"
+                    value={formData.workingHoursEnd}
+                    onChange={(e) => handleInputChange("workingHoursEnd", e.target.value)}
+                    className="mt-1.5 h-10 border-slate-300 bg-white"
+                  />
+                </div>
+              </div>
+
+              {formData.workingHoursStart && formData.workingHoursEnd && (() => {
+                try {
+                  const [sh, sm] = formData.workingHoursStart.split(":").map(Number);
+                  const [eh, em] = formData.workingHoursEnd.split(":").map(Number);
+                  const diff = (eh * 60 + em) - (sh * 60 + sm);
+                  if (diff > 0) {
+                    const hours = (diff / 60).toFixed(1);
+                    return (
+                      <p className="text-xs text-slate-500 italic mt-1 bg-slate-50 p-2.5 rounded-md border border-slate-100">
+                        Active daily schedule window: {hours.endsWith(".0") ? parseInt(hours) : hours} hours
+                      </p>
+                    );
+                  }
+                } catch (e) {}
+                return null;
+              })()}
 
               <Button
                 onClick={handleSaveProfile}

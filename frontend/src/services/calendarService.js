@@ -1,6 +1,8 @@
 
 
-const BASE_URL = 'http://localhost:8000/api';
+import { API_BASE } from './apiConfig';
+
+const BASE_URL = API_BASE;
 
 
 function authHeaders(token) {

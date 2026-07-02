@@ -120,7 +120,15 @@ async def schedule_draft_plan(plan_id: str, user=Depends(verify_token)):
                 "priority": tp.task_priority
             })
         subtasks_map = {tp.task_id: tp.subtasks for tp in plan.task_plans}
-        task_plans = prioritize_tasks(items_for_priority, subtasks_map, total_free_minutes)
+        try:
+            sh, sm = int(wh_start.split(":")[0]), int(wh_start.split(":")[1])
+            eh, em = int(wh_end.split(":")[0]), int(wh_end.split(":")[1])
+            wh_duration = (eh * 60 + em) - (sh * 60 + sm)
+            working_hours_per_day = max(1.0, wh_duration / 60.0)
+        except Exception:
+            working_hours_per_day = 8.0
+
+        task_plans = prioritize_tasks(items_for_priority, subtasks_map, total_free_minutes, working_hours_per_day)
         scheduled_plan = generate_global_plan(uid, task_plans, free_slots, session_dur)
         scheduled_plan.plan_id = plan_id
         scheduled_plan.status = "active"

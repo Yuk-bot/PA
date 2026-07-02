@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Mail, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { API_BASE } from "@/services/apiConfig";
 
 
 import {
@@ -67,7 +68,7 @@ const handleGoogleSignup = async () => {
     
 
     // Create Firestore profile if first login
-    const response = await fetch("http://localhost:8000/api/users/profile", {
+    const response = await fetch(`${API_BASE}/users/profile`, {
   method: "POST",
   headers: {
     Authorization: `Bearer ${token}`,
@@ -181,7 +182,7 @@ const handleEmailSignup = async (e) => {
     localStorage.setItem("token", token);
 
     // Create Firestore profile
-    await fetch("http://localhost:8000/api/users/profile", {
+    await fetch(`${API_BASE}/users/profile`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,

@@ -12,6 +12,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
+import { API_BASE } from "@/services/apiConfig";
+
 export default function CompleteProfile() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
@@ -42,7 +44,7 @@ export default function CompleteProfile() {
       const token = localStorage.getItem('token');
       const displayName = localStorage.getItem('userDisplayName');
 
-      const response = await fetch('http://localhost:8000/api/users/profile', {
+      const response = await fetch(`${API_BASE}/users/profile`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

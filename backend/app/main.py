@@ -36,6 +36,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.middleware("http")
+async def force_https_scheme_middleware(request, call_next):
+    if request.headers.get("x-forwarded-proto") == "https":
+        request.scope["scheme"] = "https"
+    response = await call_next(request)
+    return response
+
 """
 #auth routes
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])

@@ -8,7 +8,7 @@ from middleware.auth import verify_token
 
 router = APIRouter()
 
-@router.post("/")
+@router.post("")
 async def create_new_task(
     task_data: TaskCreate,
     user=Depends(verify_token)
@@ -21,7 +21,7 @@ async def create_new_task(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/")
+@router.get("")
 async def get_tasks(user=Depends(verify_token)): #get all tasks from current user
    
     try:

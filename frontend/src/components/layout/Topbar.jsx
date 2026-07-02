@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Bell, Search, Settings, User } from 'lucide-react';
+import { API_BASE } from "@/services/apiConfig";
 
 export function Topbar() {
   const location = useLocation();
@@ -22,7 +23,7 @@ export function Topbar() {
     const fetchProfile = async () => {
       if (!token) return;
       try {
-        const response = await fetch("http://localhost:8000/api/users/profile", {
+        const response = await fetch(`${API_BASE}/users/profile`, {
           headers: {
             'Authorization': `Bearer ${token}`,
           },

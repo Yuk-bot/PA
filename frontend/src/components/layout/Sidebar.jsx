@@ -5,6 +5,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+import { API_BASE } from "@/services/apiConfig";
 
 import {
   LayoutDashboard,
@@ -28,7 +29,7 @@ export function Sidebar() {
     const fetchProfile = async () => {
       if (!token) return;
       try {
-        const response = await fetch("http://localhost:8000/api/users/profile", {
+        const response = await fetch(`${API_BASE}/users/profile`, {
           headers: {
             'Authorization': `Bearer ${token}`,
           },

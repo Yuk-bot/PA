@@ -27,7 +27,7 @@ def _score(task: Dict) -> float:
     return round(pv * 0.4 + (1.0 / days) * 0.6, 4)
 
 
-def _feasibility_warning(task: Dict, subtasks: List[SubtaskSchema]) -> tuple[bool, Optional[str]]:
+def _feasibility_warning(task: Dict, subtasks: List[SubtaskSchema], working_hours_per_day: float = 8.0) -> tuple[bool, Optional[str]]:
     total_minutes = sum(s.estimated_minutes for s in subtasks)
     deadline = task.get("deadline")
     if not deadline:
@@ -37,12 +37,15 @@ def _feasibility_warning(task: Dict, subtasks: List[SubtaskSchema]) -> tuple[boo
     if days <= 0:
         return False, "Deadline has already passed."
 
-    max_available_minutes = days * 8 * 60
+    max_available_minutes = days * working_hours_per_day * 60
     if total_minutes > max_available_minutes:
         hours_needed = round(total_minutes / 60, 1)
+        wh_display = round(working_hours_per_day, 1)
+        if wh_display.is_integer():
+            wh_display = int(wh_display)
         return False, (
             f"Requires ~{hours_needed}h of work but only {round(days, 1)} days remain "
-            f"(assuming 8h/day). Lower-priority tasks may not be scheduled."
+            f"(assuming {wh_display}h/day). Lower-priority tasks may not be scheduled."
         )
     return True, None
 
@@ -51,6 +54,7 @@ def prioritize_tasks(
     tasks: List[Dict],
     subtasks_map: Dict[str, List[SubtaskSchema]],
     total_free_minutes: int,
+    working_hours_per_day: float = 8.0,
 ) -> List[TaskPlanSchema]:
     task_plans: List[TaskPlanSchema] = []
     cumulative_minutes = 0
@@ -59,7 +63,7 @@ def prioritize_tasks(
         task_id = task.get("id") or task.get("task_id", "")
         subtasks = subtasks_map.get(task_id, [])
         score = _score(task)
-        can_complete, warning = _feasibility_warning(task, subtasks)
+        can_complete, warning = _feasibility_warning(task, subtasks, working_hours_per_day)
 
         task_minutes = sum(s.estimated_minutes for s in subtasks)
         cumulative_minutes += task_minutes
