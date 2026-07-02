@@ -20,7 +20,10 @@ from calender.oauth_handler import (
 from calender.calender_client import GoogleCalendarClient
 from calender.utils import decrypt_token
 
+import os
+
 router = APIRouter(prefix="/api/calendar", tags=["calendar"])
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://vibe2ship-863e5.web.app")
 
 
 @router.get("/connect", response_model=CalendarConnectResponse)
@@ -44,24 +47,21 @@ async def calendar_callback(code: str = Query(None), state: str = Query(None)):
     try:
         
         if not code:
-            
-            return RedirectResponse(url="http://localhost:5173/calendar?error=missing_code")
+            return RedirectResponse(url=f"{FRONTEND_URL}/calendar?error=missing_code")
 
         if not state:
-            
-            return RedirectResponse(url="http://localhost:5173/calendar?error=missing_state")
+            return RedirectResponse(url=f"{FRONTEND_URL}/calendar?error=missing_state")
 
-        uid=state
+        uid = state
 
         credentials = handle_oauth_callback(uid, code)
         
         return RedirectResponse(
-            url=f"http://localhost:5173/calendar?calendar_connected=true&email={credentials.google_account_email}"
+            url=f"{FRONTEND_URL}/calendar?calendar_connected=true&email={credentials.google_account_email}"
         )
 
     except Exception as e:
-        
-        return RedirectResponse(url=f"http://localhost:5173/calendar?error={str(e)}")
+        return RedirectResponse(url=f"{FRONTEND_URL}/calendar?error={str(e)}")
 
 
 @router.get("/events", response_model=CalendarEventsResponse)#get upcoming calendar events.

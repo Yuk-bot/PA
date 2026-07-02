@@ -323,38 +323,65 @@ def fetch_incremental_emails(
 
     try:
         if sync_state.history_id and not deep_sync:
-            # --- Incremental sync via History API ---
-            logger.info(
-                "Incremental Gmail sync for user '%s' from history_id=%s.",
-                uid, sync_state.history_id
-            )
-            history_response = service.users().history().list(
-                userId="me",
-                startHistoryId=sync_state.history_id,
-                historyTypes=["messageAdded"],
-                maxResults=batch_size,
-            ).execute()
+         
+            try:
+                logger.info(
+                    "Incremental Gmail sync for user '%s' from history_id=%s.",
+                    uid, sync_state.history_id
+                )
+                history_response = service.users().history().list(
+                    userId="me",
+                    startHistoryId=sync_state.history_id,
+                    historyTypes=["messageAdded"],
+                    maxResults=batch_size,
+                ).execute()
 
-            histories = history_response.get("history", [])
-            new_history_id = history_response.get("historyId", new_history_id)
-            message_ids_to_fetch: List[str] = []
+                histories = history_response.get("history", [])
+                new_history_id = history_response.get("historyId", new_history_id)
+                message_ids_to_fetch: List[str] = []
 
-            for history_item in histories:
-                for msg_added in history_item.get("messagesAdded", []):
-                    msg_id = msg_added.get("message", {}).get("id", "")
-                    if msg_id and msg_id not in processed_ids:
-                        message_ids_to_fetch.append(msg_id)
+                for history_item in histories:
+                    for msg_added in history_item.get("messagesAdded", []):
+                        msg_id = msg_added.get("message", {}).get("id", "")
+                        if msg_id and msg_id not in processed_ids:
+                            message_ids_to_fetch.append(msg_id)
 
-            logger.info(
-                "History API returned %d new message(s) for user '%s'.",
-                len(message_ids_to_fetch), uid
-            )
-            for msg_id in message_ids_to_fetch[:batch_size]:
-                msg = fetch_single_message(service, msg_id)
-                if msg:
-                    email = _build_raw_email(msg)
-                    if email:
-                        raw_emails.append(email)
+                logger.info(
+                    "History API returned %d new message(s) for user '%s'.",
+                    len(message_ids_to_fetch), uid
+                )
+                for msg_id in message_ids_to_fetch[:batch_size]:
+                    msg = fetch_single_message(service, msg_id)
+                    if msg:
+                        email = _build_raw_email(msg)
+                        if email:
+                            print(f"GMAIL SYNC: Fetched message ID '{msg_id}', Subject: '{email.subject}', Sender: '{email.sender}'")
+                            raw_emails.append(email)
+            except HttpError as hist_exc:
+                status_code = hist_exc.resp.status if hist_exc.resp else 0
+                if status_code in (400, 404):
+                    logger.warning("Gmail history ID expired or invalid for user '%s'. Falling back to deep sync.", uid)
+                    print(f"GMAIL SYNC: History ID {sync_state.history_id} expired. Falling back to full sync.")
+                    profile = service.users().getProfile(userId="me").execute()
+                    new_history_id = profile.get("historyId", "")
+                    after_ts = int((datetime.utcnow() - timedelta(days=7)).timestamp())
+                    query = f"after:{after_ts} -label:SENT"
+                    list_response = service.users().messages().list(
+                        userId="me",
+                        q=query,
+                        maxResults=batch_size,
+                    ).execute()
+                    messages = list_response.get("messages", [])
+                    for msg_stub in messages:
+                        msg_id = msg_stub.get("id", "")
+                        if msg_id and msg_id not in processed_ids:
+                            msg = fetch_single_message(service, msg_id)
+                            if msg:
+                                email = _build_raw_email(msg)
+                                if email:
+                                    raw_emails.append(email)
+                else:
+                    raise
 
         else:
             # --- First-time or Deep sync: fetch recent emails ---
@@ -371,7 +398,6 @@ def fetch_incremental_emails(
                 (datetime.utcnow() - timedelta(days=7)).timestamp()
             )
             query = f"after:{after_ts} -label:SENT"
-
             limit = DEEP_SYNC_BATCH_SIZE if deep_sync else batch_size
             list_response = service.users().messages().list(
                 userId="me",
@@ -384,9 +410,13 @@ def fetch_incremental_emails(
                 "Sync: %d messages found for user '%s'.", len(messages), uid
             )
 
+            skipped_count = 0
             for msg_stub in messages:
                 msg_id = msg_stub.get("id", "")
-                if msg_id and msg_id not in processed_ids:
+                if msg_id in processed_ids:
+                    skipped_count += 1
+                    continue
+                if msg_id:
                     msg = fetch_single_message(service, msg_id)
                     if msg:
                         email = _build_raw_email(msg)

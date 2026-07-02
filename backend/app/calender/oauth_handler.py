@@ -12,7 +12,10 @@ from calender.utils import encrypt_token, decrypt_token
 
 CLIENT_ID = os.getenv("OAUTH_CLIENT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
-REDIRECT_URI = os.getenv("GOOGLE_CALENDAR_REDIRECT_URI")
+REDIRECT_URI = os.getenv(
+    "GOOGLE_CALENDAR_REDIRECT_URI",
+    "https://momentum-backend-200253451259.us-central1.run.app/api/calendar/callback"
+)
 
 
 SCOPES = [
