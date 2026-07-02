@@ -247,5 +247,6 @@ Artificial Intelligence was used during development to assist with:
 - Adding risk calculating agent
 - Improving memory, enviornment and agent interaction for perosonalisation
 - Calendar write-back for generated subtasks
+- Adding security to preventthe access to sensitive gmails
 
 ---
