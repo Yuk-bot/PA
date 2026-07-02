@@ -1,16 +1,4 @@
-"""
-Gmail Service — Inbox Intelligence Agent
 
-Wraps the Gmail API. Reuses the existing Google OAuth credentials already
-stored in Firestore under users/{uid}/integrations/google_calendar.
-
-The Gmail scope (gmail.readonly) is expected to be added to the existing
-OAuth flow (calender/oauth_handler.py). This service does NOT perform any
-new authentication — it reads, refreshes, and updates tokens via the exact
-same Firestore path used by GoogleCalendarClient.
-
-Supports incremental sync via Gmail History API to avoid reprocessing.
-"""
 
 from __future__ import annotations
 
@@ -43,11 +31,6 @@ CALENDAR_READONLY_SCOPE = "https://www.googleapis.com/auth/calendar.readonly"
 DEFAULT_BATCH_SIZE: int = int(os.getenv("INBOX_BATCH_SIZE", "25"))
 DEEP_SYNC_BATCH_SIZE: int = int(os.getenv("INBOX_DEEP_SYNC_BATCH_SIZE", "100"))
 
-
-
-# ---------------------------------------------------------------------------
-# Credential helper
-# ---------------------------------------------------------------------------
 
 def _build_gmail_credentials(uid: str) -> Optional[Credentials]:
     """
@@ -109,9 +92,6 @@ def _persist_refreshed_tokens(uid: str, creds: Credentials) -> None:
         logger.warning("Could not persist refreshed tokens for user '%s': %s", uid, exc)
 
 
-# ---------------------------------------------------------------------------
-# Service factory
-# ---------------------------------------------------------------------------
 
 def get_gmail_service(uid: str) -> Optional[Any]:
     """
@@ -132,9 +112,6 @@ def get_gmail_service(uid: str) -> Optional[Any]:
         return None
 
 
-# ---------------------------------------------------------------------------
-# Sync state persistence
-# ---------------------------------------------------------------------------
 
 def load_sync_state(uid: str) -> InboxSyncState:
     """
@@ -167,10 +144,6 @@ def save_sync_state(uid: str, state: InboxSyncState) -> None:
     doc_ref.set(payload)
     logger.debug("Inbox sync state saved for user '%s'.", uid)
 
-
-# ---------------------------------------------------------------------------
-# Email body extraction
-# ---------------------------------------------------------------------------
 
 def _decode_body_part(part: Dict[str, Any]) -> str:
     """Decodes a single MIME body part from base64url to plain text."""
@@ -278,9 +251,6 @@ def _build_raw_email(message: Dict[str, Any]) -> Optional[RawEmail]:
         return None
 
 
-# ---------------------------------------------------------------------------
-# Email fetching
-# ---------------------------------------------------------------------------
 
 def fetch_single_message(service: Any, message_id: str) -> Optional[Dict[str, Any]]:
     """Fetches a single Gmail message in full format."""

@@ -63,7 +63,7 @@ function formatFreeMinutes(mins) {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
-function groupItemsByDate(events, tasks) {
+function groupItemsByDate(events, tasks, latestPlan) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
@@ -99,6 +99,30 @@ function groupItemsByDate(events, tasks) {
     const deadlineMs = new Date(task.deadline).getTime();
     if (isNaN(deadlineMs)) continue;
     addToGroup(deadlineMs, { ...task, itemType: "task" });
+  }
+
+  if (latestPlan && latestPlan.task_plans) {
+    for (const tp of latestPlan.task_plans) {
+      if (tp.task_id.startsWith("event_")) continue;
+      
+      for (const subtask of tp.subtasks) {
+        if (!subtask.scheduled_start) continue;
+        const startMs = new Date(subtask.scheduled_start).getTime();
+        if (isNaN(startMs)) continue;
+        
+        addToGroup(startMs, {
+          id: subtask.subtask_id,
+          task_id: tp.task_id,
+          title: `${tp.task_title}: ${subtask.title}`,
+          description: subtask.description || "",
+          start: subtask.scheduled_start,
+          end: subtask.scheduled_end,
+          priority: tp.task_priority,
+          status: subtask.status,
+          itemType: "scheduled_subtask",
+        });
+      }
+    }
   }
 
   return Object.values(groups).sort((a, b) =>
@@ -619,7 +643,7 @@ export default function CalendarPage() {
     }
   };
 
-  const groupedItems = groupItemsByDate(events, tasks);
+  const groupedItems = groupItemsByDate(events, tasks, latestPlan);
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
@@ -764,9 +788,13 @@ export default function CalendarPage() {
                         {items.filter((i) => i.itemType === "event").length > 0 &&
                           `${items.filter((i) => i.itemType === "event").length} event${items.filter((i) => i.itemType === "event").length !== 1 ? "s" : ""}`}
                         {items.filter((i) => i.itemType === "event").length > 0 &&
-                          items.filter((i) => i.itemType === "task").length > 0 && " · "}
+                          (items.filter((i) => i.itemType === "task").length > 0 || items.filter((i) => i.itemType === "scheduled_subtask").length > 0) && " · "}
                         {items.filter((i) => i.itemType === "task").length > 0 &&
                           `${items.filter((i) => i.itemType === "task").length} task deadline${items.filter((i) => i.itemType === "task").length !== 1 ? "s" : ""}`}
+                        {items.filter((i) => i.itemType === "task").length > 0 &&
+                          items.filter((i) => i.itemType === "scheduled_subtask").length > 0 && " · "}
+                        {items.filter((i) => i.itemType === "scheduled_subtask").length > 0 &&
+                          `${items.filter((i) => i.itemType === "scheduled_subtask").length} work session${items.filter((i) => i.itemType === "scheduled_subtask").length !== 1 ? "s" : ""}`}
                       </p>
                     </div>
 
@@ -775,6 +803,41 @@ export default function CalendarPage() {
                         if (item.itemType === "task") {
                           const taskSubtasks = latestPlan?.task_plans?.find((tp) => tp.task_id === item.id)?.subtasks || [];
                           return <TaskCard key={`task-${item.id}`} task={item} subtasks={taskSubtasks} />;
+                        } else if (item.itemType === "scheduled_subtask") {
+                          return (
+                            <Card key={`subtask-${item.id}`} className="border-indigo-100 bg-indigo-50/40 hover:bg-indigo-50/70 transition-all duration-200 p-4">
+                              <div className="flex items-start gap-3">
+                                <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${item.status === 'completed' ? 'text-indigo-400' : 'text-indigo-600'}`} />
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <h4 className={`font-semibold text-slate-900 truncate ${item.status === 'completed' ? 'line-through text-slate-400' : ''}`}>
+                                      {item.title}
+                                    </h4>
+                                    <Badge className="text-[10px] bg-indigo-100 text-indigo-700 border border-indigo-200 shrink-0">
+                                      Schedule Block
+                                    </Badge>
+                                    {item.priority && (
+                                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-indigo-100 bg-indigo-50 text-indigo-700 shrink-0 uppercase">
+                                        {item.priority}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {item.description && (
+                                    <p className="text-xs text-slate-500 mt-1 line-clamp-2">{item.description}</p>
+                                  )}
+                                  <div className="flex items-center gap-3 mt-2 text-sm text-slate-600">
+                                    <span className="flex items-center gap-1">
+                                      <Clock className="w-3.5 h-3.5 shrink-0" />
+                                      {formatTime(item.start)} – {formatTime(item.end)}
+                                    </span>
+                                    <span className="text-slate-400 text-xs">
+                                      {formatDuration(item.start, item.end)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </Card>
+                          );
                         } else {
                           const eventSubtasks = latestPlan?.task_plans?.find((tp) => tp.task_id === "event_" + item.event_id)?.subtasks || [];
                           return <EventCard key={item.event_id} event={item} subtasks={eventSubtasks} />;

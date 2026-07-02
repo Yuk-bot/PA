@@ -24,6 +24,7 @@ SCOPES = [
     # Allows reading Gmail to extract actionable task suggestions.
     # Users will be prompted to re-authorize once to grant this scope.
     "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/tasks.readonly",
 ]
 
 db = firestore.client()

@@ -29,7 +29,11 @@ class GoogleCalendarClient:
             token_uri="https://oauth2.googleapis.com/token",
             client_id=os.getenv("OAUTH_CLIENT_ID"),
             client_secret=os.getenv("CLIENT_SECRET"),
-            scopes=["https://www.googleapis.com/auth/calendar.readonly"],
+            scopes=[
+                "https://www.googleapis.com/auth/calendar.readonly",
+                "https://www.googleapis.com/auth/gmail.readonly",
+                "https://www.googleapis.com/auth/tasks.readonly",
+            ],
             expiry=datetime.utcfromtimestamp(self.credentials_obj.expires_at),
         )
         
@@ -58,14 +62,13 @@ class GoogleCalendarClient:
             print(f"Error updating tokens in Firestore: {e}")
     
     def get_events(self, max_results: int = 10, days_ahead: int = 30) -> List[CalendarEvent]:
-        
         try:
-            now = datetime.utcnow().isoformat() + "Z"
+            start_date = (datetime.utcnow() - timedelta(days=7)).isoformat() + "Z"
             end_date = (datetime.utcnow() + timedelta(days=days_ahead)).isoformat() + "Z"
             
             events_result = self.service.events().list(
                 calendarId="primary",
-                timeMin=now,
+                timeMin=start_date,
                 timeMax=end_date,
                 maxResults=max_results,
                 singleEvents=True,
@@ -73,11 +76,80 @@ class GoogleCalendarClient:
             ).execute()
             
             events = events_result.get("items", [])
-            return self._parse_events(events)
+            cal_events = self._parse_events(events)
+            
+            gtasks = self.get_google_tasks(days_ahead=days_ahead)
+            merged = cal_events + gtasks
+            merged.sort(key=lambda x: x.start)
+            return merged
         
         except Exception as e:
             print(f"Error fetching events: {e}")
-            return []
+            raise e
+
+    def get_google_tasks(self, days_ahead: int = 30) -> List[CalendarEvent]:
+        try:
+            creds = Credentials(
+                token=self.credentials_obj.access_token,
+                refresh_token=self.credentials_obj.refresh_token,
+                token_uri="https://oauth2.googleapis.com/token",
+                client_id=os.getenv("OAUTH_CLIENT_ID"),
+                client_secret=os.getenv("CLIENT_SECRET"),
+                scopes=[
+                    "https://www.googleapis.com/auth/calendar.readonly",
+                    "https://www.googleapis.com/auth/gmail.readonly",
+                    "https://www.googleapis.com/auth/tasks.readonly",
+                ],
+                expiry=datetime.utcfromtimestamp(self.credentials_obj.expires_at),
+            )
+            tasks_service = build("tasks", "v1", credentials=creds)
+            
+            tasklists_res = tasks_service.tasklists().list(maxResults=50).execute()
+            tasklists = tasklists_res.get("items", [])
+            
+            parsed_tasks = []
+            for tl in tasklists:
+                tl_id = tl["id"]
+                tasks_res = tasks_service.tasks().list(
+                    tasklist=tl_id,
+                    showCompleted=True,
+                    maxResults=100,
+                ).execute()
+                
+                for task in tasks_res.get("items", []):
+                    title = task.get("title")
+                    if not title:
+                        continue
+                    
+                    due_str = task.get("due")
+                    if not due_str:
+                        continue
+                    
+                    try:
+                        due_dt = datetime.fromisoformat(due_str.replace("Z", "+00:00")).replace(tzinfo=None)
+                    except Exception:
+                        continue
+                        
+                    start_bound = datetime.utcnow() - timedelta(days=7)
+                    end_bound = datetime.utcnow() + timedelta(days=days_ahead)
+                    if not (start_bound <= due_dt <= end_bound):
+                        continue
+                    
+                    cal_event = CalendarEvent(
+                        event_id="gtask_" + task.get("id", ""),
+                        title="[Google Task] " + title,
+                        start=due_dt,
+                        end=due_dt + timedelta(days=1),
+                        description=task.get("notes", ""),
+                        location="",
+                        is_all_day=True,
+                        attendees=[],
+                    )
+                    parsed_tasks.append(cal_event)
+            return parsed_tasks
+        except Exception as e:
+            print(f"Error fetching Google Tasks: {e}")
+            raise e
     
     def get_today_events(self) -> List[CalendarEvent]:
       
@@ -101,7 +173,7 @@ class GoogleCalendarClient:
         
         except Exception as e:
             print(f"Error fetching today's events: {e}")
-            return []
+            raise e
     
     def _parse_events(self, events: List[dict]) -> List[CalendarEvent]:
         
