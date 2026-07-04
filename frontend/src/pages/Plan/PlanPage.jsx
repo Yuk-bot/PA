@@ -613,7 +613,17 @@ export default function PlanPage() {
                 disabled={schedulingPlan}
                 className="bg-emerald-600 hover:bg-emerald-700 text-white"
               >
-                {schedulingPlan ? "Scheduling Plan..." : "Generate My Plan"}
+                {schedulingPlan ? "Saving Plan..." : "Save Plan"}
+              </Button>
+            )}
+            {plan && plan.status === "active" && (
+              <Button
+                size="sm"
+                disabled
+                className="bg-slate-100 text-slate-500 border border-slate-200 cursor-not-allowed gap-1.5"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                Saved & Active
               </Button>
             )}
             <Button
