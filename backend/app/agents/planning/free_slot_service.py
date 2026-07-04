@@ -111,6 +111,8 @@ def get_multi_day_free_slots(
 
         day_events = []
         for e in events:
+            if e.is_all_day:
+                continue
             es = e.start.replace(tzinfo=None) if e.start.tzinfo else e.start
             ee = e.end.replace(tzinfo=None) if e.end.tzinfo else e.end
             if es.date() <= day <= ee.date():

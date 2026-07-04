@@ -18,11 +18,22 @@ DEFAULT_BREAK_MINUTES = 10
 LONG_SESSION_BREAK_MINUTES = 15
 
 
-def _parse_deadline(deadline_str: Optional[str]) -> Optional[datetime]:
+def _parse_deadline(deadline_str: Optional[str], timezone_str: str = "UTC") -> Optional[datetime]:
     if not deadline_str:
         return None
     try:
-        return datetime.fromisoformat(deadline_str.replace("Z", ""))
+        dt = datetime.fromisoformat(deadline_str.replace("Z", "+00:00"))
+        mapping = {
+            "IST": 5.5,
+            "UTC": 0.0,
+            "GMT": 0.0,
+        }
+        offset_hours = mapping.get(timezone_str.upper(), 0.0)
+        is_midnight = (dt.hour == 0 and dt.minute == 0 and dt.second == 0)
+        dl = (dt + timedelta(hours=offset_hours)).replace(tzinfo=None)
+        if is_midnight:
+            dl = dl.replace(hour=23, minute=59, second=59)
+        return dl
     except Exception:
         return None
 
@@ -42,6 +53,7 @@ def _schedule_all(
     task_plans: List[TaskPlanSchema],
     free_slots: List[FreeSlotItem],
     preferred_session_duration: int,
+    timezone_str: str = "UTC",
 ) -> Tuple[List[TaskPlanSchema], PlanSummary]:
     sorted_slots_meta = sorted(
         free_slots,
@@ -56,7 +68,7 @@ def _schedule_all(
     updated_plans: List[TaskPlanSchema] = []
 
     for tp in task_plans:
-        deadline_dt = _parse_deadline(tp.task_deadline)
+        deadline_dt = _parse_deadline(tp.task_deadline, timezone_str)
         updated_subtasks: List[SubtaskSchema] = []
         unplaced_count = 0
 
@@ -167,8 +179,9 @@ def generate_global_plan(
     task_plans: List[TaskPlanSchema],
     free_slots: List[FreeSlotItem],
     preferred_session_duration: int,
+    timezone_str: str = "UTC",
 ) -> GlobalPlan:
-    scheduled_plans, summary = _schedule_all(task_plans, free_slots, preferred_session_duration)
+    scheduled_plans, summary = _schedule_all(task_plans, free_slots, preferred_session_duration, timezone_str)
     return GlobalPlan(
         plan_id=str(uuid4()),
         user_id=uid,

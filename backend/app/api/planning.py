@@ -128,8 +128,9 @@ async def schedule_draft_plan(plan_id: str, user=Depends(verify_token)):
         except Exception:
             working_hours_per_day = 8.0
 
-        task_plans = prioritize_tasks(items_for_priority, subtasks_map, total_free_minutes, working_hours_per_day)
-        scheduled_plan = generate_global_plan(uid, task_plans, free_slots, session_dur)
+        timezone_str = profile.get("timezone", "UTC")
+        task_plans = prioritize_tasks(items_for_priority, subtasks_map, total_free_minutes, working_hours_per_day, timezone_str)
+        scheduled_plan = generate_global_plan(uid, task_plans, free_slots, session_dur, timezone_str)
         scheduled_plan.plan_id = plan_id
         scheduled_plan.status = "active"
         save_plan(scheduled_plan)
@@ -255,7 +256,8 @@ async def regenerate(plan_id: str, user=Depends(verify_token)):
         days_ahead=14,
     )
 
-    new_plan = generate_global_plan(uid, cleared_plans, free_slots, session_dur)
+    timezone_str = profile.get("timezone", "UTC")
+    new_plan = generate_global_plan(uid, cleared_plans, free_slots, session_dur, timezone_str)
     new_plan.plan_id = plan_id
     save_plan(new_plan)
     return {"plan_id": plan_id, "plan": new_plan.model_dump()}

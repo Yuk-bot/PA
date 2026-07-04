@@ -126,12 +126,13 @@ class GoogleCalendarClient:
                         continue
                     
                     try:
-                        due_dt = datetime.fromisoformat(due_str.replace("Z", "+00:00")).replace(tzinfo=None)
+                        due_dt = datetime.fromisoformat(due_str.replace("Z", "+00:00"))
                     except Exception:
                         continue
                         
-                    start_bound = datetime.utcnow() - timedelta(days=7)
-                    end_bound = datetime.utcnow() + timedelta(days=days_ahead)
+                    from datetime import timezone
+                    start_bound = datetime.now(timezone.utc) - timedelta(days=7)
+                    end_bound = datetime.now(timezone.utc) + timedelta(days=days_ahead)
                     if not (start_bound <= due_dt <= end_bound):
                         continue
                     
@@ -188,16 +189,13 @@ class GoogleCalendarClient:
                 
                 is_all_day = "date" in start_data
                 
+                from datetime import timezone
                 if is_all_day:
-                    start = datetime.strptime(start_data["date"], "%Y-%m-%d")
-                    end = datetime.strptime(end_data["date"], "%Y-%m-%d")
+                    start = datetime.strptime(start_data["date"], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                    end = datetime.strptime(end_data["date"], "%Y-%m-%d").replace(tzinfo=timezone.utc)
                 else:
-                   
                     start = datetime.fromisoformat(start_data["dateTime"].replace("Z", "+00:00"))
                     end = datetime.fromisoformat(end_data["dateTime"].replace("Z", "+00:00"))
-                    
-                    start = start.astimezone().replace(tzinfo=None) #converting to local timezone
-                    end = end.astimezone().replace(tzinfo=None)
 
                 attendees = [att.get("email", "") for att in event.get("attendees", [])]
                 

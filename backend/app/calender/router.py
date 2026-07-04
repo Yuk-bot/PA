@@ -151,6 +151,7 @@ async def get_free_slots(user=Depends(verify_token)):
         events = client.get_today_events()
 
         free_slots = _calculate_free_slots(events, working_hours_start, working_hours_end)
+        free_slots = _subtract_scheduled_subtasks(free_slots, uid)
         
         total_free_minutes = sum(slot.duration_minutes for slot in free_slots)
         today_str = datetime.now().strftime("%Y-%m-%d")
@@ -203,20 +204,24 @@ def _calculate_free_slots(events, working_hours_start: str, working_hours_end: s
     work_end = datetime.combine(today, datetime.min.time()).replace(hour=end_hour, minute=end_min)
     
    
-    sorted_events = sorted(events, key=lambda e: e.start)
+    def make_naive(dt: datetime) -> datetime:
+        return dt.replace(tzinfo=None) if dt.tzinfo else dt
+
+    sorted_events = sorted(events, key=lambda e: make_naive(e.start))
     
     free_slots = []
     current_time = work_start
     
     for event in sorted_events:
-        # Skip all-day events and events outside working hours
-        if event.is_all_day or event.start >= work_end:
+        event_start = make_naive(event.start)
+        event_end = make_naive(event.end)
+        
+        if event.is_all_day or event_start >= work_end:
             continue
         
-        # If there's a gap before this event
-        if current_time < event.start and current_time < work_end:
+        if current_time < event_start and current_time < work_end:
             gap_start = max(current_time, work_start)
-            gap_end = min(event.start, work_end)
+            gap_end = min(event_start, work_end)
             
             if gap_end > gap_start:
                 duration_minutes = int((gap_end - gap_start).total_seconds() / 60)
@@ -229,9 +234,8 @@ def _calculate_free_slots(events, working_hours_start: str, working_hours_end: s
                         )
                     )
         
-        current_time = max(current_time, event.end)
+        current_time = max(current_time, event_end)
     
-    # Add remaining time until work_end
     if current_time < work_end:
         duration_minutes = int((work_end - current_time).total_seconds() / 60)
         if duration_minutes > 0:
@@ -244,4 +248,52 @@ def _calculate_free_slots(events, working_hours_start: str, working_hours_end: s
             )
     
     return free_slots
+
+
+def _subtract_scheduled_subtasks(free_slots: list[FreeSlot], uid: str) -> list[FreeSlot]:
+    try:
+        from agents.planning.plan_store import get_latest_plan
+        active_plan = get_latest_plan(uid)
+        if not active_plan or active_plan.status != "active":
+            return free_slots
+            
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        intervals = []
+        
+        for tp in active_plan.task_plans:
+            if tp.task_id.startswith("event_"):
+                continue
+            for subtask in tp.subtasks:
+                if subtask.scheduled_start and subtask.scheduled_end:
+                    if subtask.scheduled_start.startswith(today_str):
+                        try:
+                            s_start = datetime.fromisoformat(subtask.scheduled_start)
+                            s_end = datetime.fromisoformat(subtask.scheduled_end)
+                            intervals.append((s_start.replace(tzinfo=None), s_end.replace(tzinfo=None)))
+                        except Exception:
+                            continue
+                            
+        if not intervals:
+            return free_slots
+            
+        current_slots = free_slots
+        for int_start, int_end in intervals:
+            next_slots = []
+            for slot in current_slots:
+                if int_end <= slot.start or int_start >= slot.end:
+                    next_slots.append(slot)
+                else:
+                    if int_start > slot.start:
+                        duration = int((int_start - slot.start).total_seconds() / 60)
+                        if duration > 0:
+                            next_slots.append(FreeSlot(start=slot.start, end=int_start, duration_minutes=duration))
+                    if int_end < slot.end:
+                        duration = int((slot.end - int_end).total_seconds() / 60)
+                        if duration > 0:
+                            next_slots.append(FreeSlot(start=int_end, end=slot.end, duration_minutes=duration))
+            current_slots = next_slots
+            
+        return current_slots
+    except Exception:
+        return free_slots
 

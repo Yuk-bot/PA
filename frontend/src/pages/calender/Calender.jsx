@@ -1013,7 +1013,7 @@ export default function CalendarPage() {
                       </div>
                       <Button
                         size="xs"
-                        onClick={handleGmailSync}
+                        onClick={() => handleGmailSync(false)}
                         disabled={isGmailSyncing}
                         className="mx-auto gap-1 bg-slate-900 text-white hover:bg-slate-800 text-[10px]"
                       >
