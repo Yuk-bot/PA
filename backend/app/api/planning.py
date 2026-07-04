@@ -129,7 +129,7 @@ async def schedule_draft_plan(plan_id: str, user=Depends(verify_token)):
             working_hours_per_day = 8.0
 
         timezone_str = profile.get("timezone", "UTC")
-        task_plans = prioritize_tasks(items_for_priority, subtasks_map, total_free_minutes, working_hours_per_day, timezone_str)
+        task_plans = prioritize_tasks(items_for_priority, subtasks_map, free_slots, working_hours_per_day, timezone_str)
         scheduled_plan = generate_global_plan(uid, task_plans, free_slots, session_dur, timezone_str)
         scheduled_plan.plan_id = plan_id
         scheduled_plan.status = "active"

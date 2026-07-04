@@ -94,8 +94,8 @@ function SummaryCard({ summary, planId }) {
     <div className="space-y-4">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: "Tasks Planned", value: total_tasks, icon: Zap, color: "text-violet-600" },
-          { label: "Fully Scheduled", value: tasks_scheduled, icon: CheckCircle2, color: "text-emerald-600" },
+          { label: "Total Tasks Planned", value: total_tasks, icon: Zap, color: "text-violet-600" },
+          { label: "Tasks scheduled completely", value: tasks_scheduled, icon: CheckCircle2, color: "text-emerald-600" },
           { label: "Hours Scheduled", value: `${total_scheduled_hours}h`, icon: Clock, color: "text-blue-600" },
           { label: "Days Span", value: schedule_days_span || 1, icon: CalendarDays, color: "text-slate-600" },
         ].map(({ label, value, icon: Icon, color }) => (
@@ -202,13 +202,12 @@ function SortableSubtaskCard({ subtask, planId, taskId, token, onDeleted, onUpda
 
   return (
     <div ref={setNodeRef} style={style} className="group">
-      <div className={`flex items-start gap-2 p-3 rounded-lg border transition-all duration-150 ${
-        isDragging
-          ? "border-violet-300 bg-violet-50 shadow-lg"
-          : isScheduled
+      <div className={`flex items-start gap-2 p-3 rounded-lg border transition-all duration-150 ${isDragging
+        ? "border-violet-300 bg-violet-50 shadow-lg"
+        : isScheduled
           ? "border-slate-200/60 bg-white hover:border-slate-300 hover:shadow-sm"
           : "border-dashed border-slate-300/60 bg-slate-50/50"
-      }`}>
+        }`}>
         <button
           {...attributes}
           {...listeners}
@@ -396,9 +395,8 @@ function TaskPlanCard({ taskPlan, planId, token, onReorder, onMutate }) {
   const priorityStyle = PRIORITY_STYLES[taskPlan.task_priority] || PRIORITY_STYLES.medium;
 
   return (
-    <Card className={`border-slate-200/60 overflow-hidden transition-all ${
-      !taskPlan.can_complete_on_time ? "border-l-4 border-l-red-400" : "border-l-4 border-l-violet-400"
-    }`}>
+    <Card className={`border-slate-200/60 overflow-hidden transition-all ${!taskPlan.can_complete_on_time ? "border-l-4 border-l-red-400" : "border-l-4 border-l-violet-400"
+      }`}>
       <div
         className="p-4 flex items-start justify-between gap-3 cursor-pointer select-none hover:bg-slate-50/60 transition-colors"
         onClick={() => setCollapsed((p) => !p)}
