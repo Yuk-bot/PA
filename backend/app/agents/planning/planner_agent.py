@@ -189,3 +189,6 @@ def generate_global_plan(
         summary=summary,
         task_plans=scheduled_plans,
     )
+
+def plan(dict: globalplan):
+    

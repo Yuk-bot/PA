@@ -43,6 +43,7 @@ def _build_prompt(task: Dict) -> str:
         f'{{"subtasks": [{{"title": "...", "description": "...", "estimated_minutes": 30}}]}}\n\n'
         f"Rules:\n"
         f"- Maximum {MAX_SUBTASKS} subtasks\n"
+        f"- Be very particular and critically analyse how much time it would take for each subtask as a human being who would be doing it in real and if you make a mistake it will take more time to correct it\n"
         f"- Each subtask completable in 15–120 minutes\n"
         f"- estimated_minutes must be an integer between 15 and 120\n"
         f"- Subtasks must be logically ordered (earlier ones enable later ones)\n"
