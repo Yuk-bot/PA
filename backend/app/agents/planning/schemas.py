@@ -1,7 +1,7 @@
 from __future__ import annotations
 from pydantic import BaseModel, Field
 from uuid import uuid4
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 
@@ -49,6 +49,11 @@ class GlobalPlan(BaseModel):
     updated_at: float = Field(default_factory=lambda: datetime.utcnow().timestamp())
     summary: Optional[PlanSummary] = None
     task_plans: List[TaskPlanSchema] = Field(default_factory=list)
+    mixed_task_plans: Optional[List[TaskPlanSchema]] = None
+    dependency_groups: Optional[List[List[str]]] = None
+    difficulty_levels: Optional[Dict[str, str]] = None
+    engagement_score: Optional[float] = None
+    schedule_metrics: Optional[Dict[str, Any]] = None
 
 
 class FreeSlotItem(BaseModel):

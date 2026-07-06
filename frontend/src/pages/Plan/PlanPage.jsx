@@ -50,6 +50,7 @@ import {
   regeneratePlan,
   generateSubtasks,
   schedulePlan,
+  generateMixedSchedule,
 } from "@/services/planningService";
 
 function fmt(iso) {
@@ -155,7 +156,13 @@ function SummaryCard({ summary, planId }) {
   );
 }
 
-function SortableSubtaskCard({ subtask, planId, taskId, token, onDeleted, onUpdated }) {
+const DIFFICULTY_COLORS = {
+  hard: "bg-red-50 text-red-700 border-red-100",
+  medium: "bg-amber-50 text-amber-700 border-amber-100",
+  easy: "bg-emerald-50 text-emerald-700 border-emerald-100"
+};
+
+function SortableSubtaskCard({ subtask, planId, taskId, token, onDeleted, onUpdated, difficulty, isGrouped }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: subtask.subtask_id,
   });
@@ -251,6 +258,16 @@ function SortableSubtaskCard({ subtask, planId, taskId, token, onDeleted, onUpda
               <span className="text-[11px] text-slate-400 italic">Not yet scheduled</span>
             )}
             <span className="text-[11px] text-slate-400">{fmtMins(subtask.estimated_minutes)}</span>
+            {difficulty && (
+              <Badge variant="outline" className={`text-[9px] px-1.5 py-0 h-4 uppercase ${DIFFICULTY_COLORS[difficulty] || ""}`}>
+                {difficulty}
+              </Badge>
+            )}
+            {isGrouped && (
+              <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 bg-blue-50 text-blue-700 border-blue-100">
+                Group
+              </Badge>
+            )}
           </div>
         </div>
 
@@ -361,7 +378,7 @@ function AddSubtaskForm({ planId, taskId, token, onAdded }) {
   );
 }
 
-function TaskPlanCard({ taskPlan, planId, token, onReorder, onMutate }) {
+function TaskPlanCard({ taskPlan, planId, token, onReorder, onMutate, plan }) {
   const [collapsed, setCollapsed] = useState(false);
   const [subtasks, setSubtasks] = useState(taskPlan.subtasks ?? []);
 
@@ -452,6 +469,8 @@ function TaskPlanCard({ taskPlan, planId, token, onReorder, onMutate }) {
                   token={token}
                   onDeleted={handleDeleted}
                   onUpdated={onMutate}
+                  difficulty={plan?.difficulty_levels?.[subtask.subtask_id]}
+                  isGrouped={plan?.dependency_groups?.some(group => group.includes(subtask.subtask_id))}
                 />
               ))}
             </SortableContext>
@@ -468,6 +487,8 @@ export default function PlanPage() {
   const navigate = useNavigate();
 
   const [plan, setPlan] = useState(null);
+  const [scheduleMode, setScheduleMode] = useState("sequential");
+  const [generatingMixed, setGeneratingMixed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [generatingSubtasks, setGeneratingSubtasks] = useState(false);
@@ -563,6 +584,21 @@ export default function PlanPage() {
 
   const handleReorder = () => {
     setReorderNotice(true);
+  };
+
+  const handleGenerateMixed = async () => {
+    if (!plan) return;
+    setGeneratingMixed(true);
+    setError(null);
+    try {
+      await generateMixedSchedule(token);
+      await loadPlan();
+      flash("Engagement schedule generated successfully!");
+    } catch (err) {
+      setError(err.message || "Failed to generate mixed schedule");
+    } finally {
+      setGeneratingMixed(false);
+    }
   };
 
   if (loading) {
@@ -689,6 +725,29 @@ export default function PlanPage() {
 
         {plan && (
           <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-2 border rounded-lg p-1 bg-slate-100/80 w-fit">
+                <Button
+                  size="sm"
+                  onClick={() => setScheduleMode("sequential")}
+                  className={`text-xs h-7 px-3 font-medium ${scheduleMode === "sequential" ? "bg-white text-slate-900 shadow-sm hover:bg-white" : "bg-transparent text-slate-600 hover:bg-slate-200/50"}`}
+                >
+                  Sequential View
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => setScheduleMode("mixed")}
+                  className={`text-xs h-7 px-3 font-medium ${scheduleMode === "mixed" ? "bg-white text-slate-900 shadow-sm hover:bg-white" : "bg-transparent text-slate-600 hover:bg-slate-200/50"}`}
+                >
+                  Mixed (Engagement)
+                </Button>
+              </div>
+              {scheduleMode === "mixed" && plan.engagement_score !== undefined && (
+                <div className="text-xs text-slate-500 font-medium">
+                  Engagement Score: <span className="text-violet-600 font-bold text-sm">{plan.engagement_score}%</span>
+                </div>
+              )}
+            </div>
             <SummaryCard summary={plan.summary} planId={plan.plan_id} />
             <Separator />
             <div className="space-y-1">
@@ -697,18 +756,52 @@ export default function PlanPage() {
                 Sorted by priority · drag subtasks to reorder · hover to edit or delete
               </p>
             </div>
-            <div className="space-y-3">
-              {(plan.task_plans ?? []).map((tp) => (
-                <TaskPlanCard
-                  key={tp.task_id}
-                  taskPlan={tp}
-                  planId={plan.plan_id}
-                  token={token}
-                  onReorder={handleReorder}
-                  onMutate={handleMutate}
-                />
-              ))}
-            </div>
+            {scheduleMode === "mixed" && (!plan.mixed_task_plans || plan.mixed_task_plans.length === 0) ? (
+              <Card className="border-slate-200/50 bg-gradient-to-br from-violet-50 to-slate-50 p-12">
+                <div className="flex flex-col items-center text-center gap-5">
+                  <div className="w-20 h-20 rounded-2xl bg-violet-100 border border-violet-200 flex items-center justify-center">
+                    <Zap className="w-10 h-10 text-violet-500" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-slate-900">No mixed schedule yet</h3>
+                    <p className="text-slate-500 text-sm mt-2 max-w-sm">
+                      Generate an alternative schedule optimized for engagement and reduced cognitive fatigue.
+                    </p>
+                  </div>
+                  <Button onClick={handleGenerateMixed} disabled={generatingMixed} className="gap-2 bg-violet-600 hover:bg-violet-700 text-white px-6">
+                    {generatingMixed ? <Loader className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                    {generatingMixed ? "Generating..." : "Generate Mixed Schedule"}
+                  </Button>
+                </div>
+              </Card>
+            ) : generatingMixed ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <Card key={i} className="p-4 border-slate-200/60 bg-white/80 animate-pulse">
+                    <div className="h-4 bg-slate-200 rounded w-1/3 mb-2"></div>
+                    <div className="h-3 bg-slate-200 rounded w-1/4 mb-4"></div>
+                    <div className="space-y-2">
+                      <div className="h-8 bg-slate-100 rounded"></div>
+                      <div className="h-8 bg-slate-100 rounded"></div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {(scheduleMode === "mixed" && plan.mixed_task_plans ? plan.mixed_task_plans : plan.task_plans ?? []).map((tp) => (
+                  <TaskPlanCard
+                    key={tp.task_id}
+                    taskPlan={tp}
+                    planId={plan.plan_id}
+                    token={token}
+                    onReorder={handleReorder}
+                    onMutate={handleMutate}
+                    plan={plan}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -93,3 +93,27 @@ export async function regeneratePlan(token, planId) {
   if (!res.ok) throw new Error(`Regenerate failed (${res.status})`);
   return res.json();
 }
+
+export async function getSchedule(token) {
+  const res = await fetch(`${API_BASE}/schedule`, { headers: headers(token) });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Failed to fetch schedule (${res.status})`);
+  return res.json();
+}
+
+export async function getMixedSchedule(token) {
+  const res = await fetch(`${API_BASE}/schedule/mixed`, { headers: headers(token) });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Failed to fetch mixed schedule (${res.status})`);
+  return res.json();
+}
+
+export async function generateMixedSchedule(token) {
+  const res = await fetch(`${API_BASE}/schedule/generate-mixed`, {
+    method: "POST",
+    headers: headers(token),
+  });
+  if (!res.ok) throw new Error(`Failed to generate mixed schedule (${res.status})`);
+  return res.json();
+}
+

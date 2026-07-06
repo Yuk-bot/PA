@@ -5,6 +5,7 @@ from fastapi import FastAPI, Depends
 from api import user_profile, tasks
 from api.inbox import router as inbox_router
 from api.planning import router as planning_router
+from api.schedule import router as schedule_router
 from calender import router
 from middleware.auth import verify_token
 
@@ -71,4 +72,5 @@ app.include_router(router.router)
 #agent endpoints
 app.include_router(inbox_router)
 app.include_router(planning_router)
+app.include_router(schedule_router)
 
