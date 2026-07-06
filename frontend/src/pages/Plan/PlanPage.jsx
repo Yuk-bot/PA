@@ -162,7 +162,7 @@ const DIFFICULTY_COLORS = {
   easy: "bg-emerald-50 text-emerald-700 border-emerald-100"
 };
 
-function SortableSubtaskCard({ subtask, planId, taskId, token, onDeleted, onUpdated, difficulty, isGrouped }) {
+function SortableSubtaskCard({ subtask, planId, taskId, token, onDeleted, onUpdated, difficulty, isGrouped, parentTaskTitle, hideGrip }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: subtask.subtask_id,
   });
@@ -208,22 +208,27 @@ function SortableSubtaskCard({ subtask, planId, taskId, token, onDeleted, onUpda
   const isScheduled = !!subtask.scheduled_start;
 
   return (
-    <div ref={setNodeRef} style={style} className="group">
+    <div ref={hideGrip ? null : setNodeRef} style={hideGrip ? {} : style} className="group">
       <div className={`flex items-start gap-2 p-3 rounded-lg border transition-all duration-150 ${isDragging
         ? "border-violet-300 bg-violet-50 shadow-lg"
         : isScheduled
           ? "border-slate-200/60 bg-white hover:border-slate-300 hover:shadow-sm"
           : "border-dashed border-slate-300/60 bg-slate-50/50"
         }`}>
-        <button
-          {...attributes}
-          {...listeners}
-          className="mt-0.5 p-0.5 text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing touch-none shrink-0"
-        >
-          <GripVertical className="w-4 h-4" />
-        </button>
+        {!hideGrip && (
+          <button
+            {...attributes}
+            {...listeners}
+            className="mt-0.5 p-0.5 text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing touch-none shrink-0"
+          >
+            <GripVertical className="w-4 h-4" />
+          </button>
+        )}
 
         <div className="flex-1 min-w-0">
+          {parentTaskTitle && (
+            <p className="text-[10px] uppercase font-bold tracking-wider text-violet-600 mb-0.5">{parentTaskTitle}</p>
+          )}
           {editing ? (
             <div className="space-y-1.5">
               <Input
@@ -470,7 +475,7 @@ function TaskPlanCard({ taskPlan, planId, token, onReorder, onMutate, plan }) {
                   onDeleted={handleDeleted}
                   onUpdated={onMutate}
                   difficulty={plan?.difficulty_levels?.[subtask.subtask_id]}
-                  isGrouped={plan?.dependency_groups?.some(group => group.includes(subtask.subtask_id))}
+                  isGrouped={plan?.dependency_groups?.some(groupStr => groupStr.split(",").includes(subtask.subtask_id))}
                 />
               ))}
             </SortableContext>
@@ -599,6 +604,28 @@ export default function PlanPage() {
     } finally {
       setGeneratingMixed(false);
     }
+  };
+
+  const getMixedFlatSchedule = () => {
+    const scheduled = [];
+    const unscheduled = [];
+    (plan?.mixed_task_plans ?? []).forEach((tp) => {
+      (tp.subtasks ?? []).forEach((sub) => {
+        const item = {
+          ...sub,
+          taskId: tp.task_id,
+          parentTaskTitle: tp.task_title,
+          priority: tp.task_priority,
+        };
+        if (sub.scheduled_start) {
+          scheduled.push(item);
+        } else {
+          unscheduled.push(item);
+        }
+      });
+    });
+    scheduled.sort((a, b) => new Date(a.scheduled_start) - new Date(b.scheduled_start));
+    return { scheduled, unscheduled };
   };
 
   if (loading) {
@@ -787,9 +814,59 @@ export default function PlanPage() {
                   </Card>
                 ))}
               </div>
+            ) : scheduleMode === "mixed" ? (
+              <div className="space-y-6">
+                {(() => {
+                  const { scheduled, unscheduled } = getMixedFlatSchedule();
+                  return (
+                    <>
+                      {scheduled.length > 0 && (
+                        <div className="space-y-3">
+                          <h4 className="text-sm font-semibold text-slate-700">Timeline</h4>
+                          {scheduled.map((subtask) => (
+                            <SortableSubtaskCard
+                              key={subtask.subtask_id}
+                              subtask={subtask}
+                              planId={plan.plan_id}
+                              taskId={subtask.taskId}
+                              token={token}
+                              onDeleted={handleMutate}
+                              onUpdated={loadPlan}
+                              difficulty={plan?.difficulty_levels?.[subtask.subtask_id]}
+                              isGrouped={plan?.dependency_groups?.some(groupStr => groupStr.split(",").includes(subtask.subtask_id))}
+                              parentTaskTitle={subtask.parentTaskTitle}
+                              hideGrip={true}
+                            />
+                          ))}
+                        </div>
+                      )}
+                      {unscheduled.length > 0 && (
+                        <div className="space-y-3 pt-4 border-t border-slate-100">
+                          <h4 className="text-sm font-semibold text-slate-500 italic">Unscheduled Subtasks</h4>
+                          {unscheduled.map((subtask) => (
+                            <SortableSubtaskCard
+                              key={subtask.subtask_id}
+                              subtask={subtask}
+                              planId={plan.plan_id}
+                              taskId={subtask.taskId}
+                              token={token}
+                              onDeleted={handleMutate}
+                              onUpdated={loadPlan}
+                              difficulty={plan?.difficulty_levels?.[subtask.subtask_id]}
+                              isGrouped={plan?.dependency_groups?.some(groupStr => groupStr.split(",").includes(subtask.subtask_id))}
+                              parentTaskTitle={subtask.parentTaskTitle}
+                              hideGrip={true}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
             ) : (
               <div className="space-y-3">
-                {(scheduleMode === "mixed" && plan.mixed_task_plans ? plan.mixed_task_plans : plan.task_plans ?? []).map((tp) => (
+                {(plan.task_plans ?? []).map((tp) => (
                   <TaskPlanCard
                     key={tp.task_id}
                     taskPlan={tp}

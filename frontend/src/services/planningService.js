@@ -113,7 +113,7 @@ export async function generateMixedSchedule(token) {
     method: "POST",
     headers: headers(token),
   });
-  if (!res.ok) throw new Error(`Failed to generate mixed schedule (${res.status})`);
+  if (!res.ok) throw new Error(`Failed to generate mixed schedule-api didnt reach (${res.status})`);
   return res.json();
 }
 

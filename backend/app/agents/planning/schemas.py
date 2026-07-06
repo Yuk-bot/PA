@@ -50,7 +50,7 @@ class GlobalPlan(BaseModel):
     summary: Optional[PlanSummary] = None
     task_plans: List[TaskPlanSchema] = Field(default_factory=list)
     mixed_task_plans: Optional[List[TaskPlanSchema]] = None
-    dependency_groups: Optional[List[List[str]]] = None
+    dependency_groups: Optional[List[str]] = None
     difficulty_levels: Optional[Dict[str, str]] = None
     engagement_score: Optional[float] = None
     schedule_metrics: Optional[Dict[str, Any]] = None

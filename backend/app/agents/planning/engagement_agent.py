@@ -366,6 +366,25 @@ class EngagementPlanningAgent(BaseRuntimeAgent):
                     session_id=session_id,
                     user_id=uid
                 ))
+                if retry_count >= 3:
+                    total_switches = 0
+                    prev_tid = None
+                    for tid, block, diff, mins in scheduled_blocks:
+                        if prev_tid and tid != prev_tid:
+                            total_switches += 1
+                        prev_tid = tid
+                    metrics = {
+                        "max_hard_streak": max_hard_streak,
+                        "context_switches": total_switches,
+                        "difficulty_distribution": {
+                            "hard": sum(1 for d in difficulty_levels.values() if d == "hard"),
+                            "medium": sum(1 for d in difficulty_levels.values() if d == "medium"),
+                            "easy": sum(1 for d in difficulty_levels.values() if d == "easy")
+                        }
+                    }
+                    engagement_score = round(100.0 - (max_hard_streak * 15.0) - (total_switches * 2.0), 1)
+                    engagement_score = max(10.0, min(100.0, engagement_score))
+                    success = True
 
         if success:
             await self.event_bus.publish(Event(
@@ -378,7 +397,7 @@ class EngagementPlanningAgent(BaseRuntimeAgent):
 
             plan.mixed_task_plans = mixed_task_plans
             plan.difficulty_levels = difficulty_levels
-            plan.dependency_groups = dependency_groups
+            plan.dependency_groups = [",".join(g) for g in dependency_groups]
             plan.engagement_score = engagement_score
             plan.schedule_metrics = metrics
             save_plan(plan)

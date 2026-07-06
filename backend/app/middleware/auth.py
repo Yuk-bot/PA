@@ -35,9 +35,9 @@ async def verify_token(request: Request) -> dict:
     
     #verifying tokens with firebase
     try:
-        print("=" * 50)
-        print("TOKEN LENGTH:", len(token))
-        print("TOKEN START:", token[:30])
+        
+        #print("TOKEN LENGTH:", len(token))
+        #print("TOKEN START:", token[:30])
 
 
         decoded = firebase_auth.verify_id_token(token)
