@@ -6,11 +6,13 @@ An AI-powered productivity companion that intelligently transforms tasks, emails
 
 ## Live Demo
 
-**Application:**  
+**Application**: 
 https://vibe2ship-863e5.web.app
 
 ---
+(sorry rn GCP free billing account exhausted - switcihng to localhost)- bare with slow speed
 
+---
 # Overview
 
 Momentum combines **manual tasks**, **Google Calendar events**, and **Gmail-derived tasks** into a single intelligent planning workflow.
