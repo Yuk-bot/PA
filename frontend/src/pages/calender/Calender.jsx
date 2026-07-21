@@ -35,6 +35,7 @@ import {
 } from "@/services/gmailService";
 import { Separator } from "@/components/ui/separator";
 import { API_BASE } from "@/services/apiConfig";
+import { getLatestPlan } from "@/services/planningService";
 
 
 function formatTime(dateStr) {

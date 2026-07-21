@@ -1,4 +1,7 @@
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi.middleware import cors
 
 from fastapi import FastAPI, Depends
@@ -30,7 +33,6 @@ app.add_middleware(
         "http://localhost:8080",
         "https://vibe2ship-863e5.web.app",
         "https://vibe2ship-863e5.firebaseapp.com",
-        "https://YOUR_DEPLOYED_FIREBASE_HOSTING_URL",
     ],
     allow_credentials=True,
     allow_methods=["*"],
