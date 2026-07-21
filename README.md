@@ -8,7 +8,7 @@ An AI-powered productivity companion that intelligently transforms tasks, emails
 
 **Application:**  
 https://vibe2ship-863e5.web.app
-
+(sorry rn GCP free billing account exhausted - switcihng to localhost)
 ---
 
 # Overview
